@@ -1,0 +1,7 @@
+.state/
+*.pyc
+__pycache__/
+*.db
+uploads/
+.superpowers/
+.claude/

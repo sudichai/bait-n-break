@@ -1,0 +1,33 @@
+services:
+  webapp:
+    build: .
+    ports:
+      - "${TARGET_PORT:-8080}:5000"
+    volumes:
+      - ../../../.state/bait/backups:/bait/backups:ro
+      - ../../../.state/bait/secrets:/bait/secrets:ro
+      - ../../../.state/bait/deception:/bait/deception
+    restart: unless-stopped
+
+  ssh-decoy:
+    image: lscr.io/linuxserver/openssh-server:latest
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - PASSWORD_ACCESS=true
+      - USER_NAME=admin
+      - USER_PASSWORD=admin123
+    ports:
+      - "2222:2222"
+    restart: unless-stopped
+
+  ftp-decoy:
+    image: fauria/vsftpd
+    environment:
+      - FTP_USER=admin
+      - FTP_PASS=admin123
+      - PASV_ADDRESS=127.0.0.1
+    ports:
+      - "2121:21"
+      - "21100-21110:21100-21110"
+    restart: unless-stopped

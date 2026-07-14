@@ -1,0 +1,15 @@
+/admin
+/admin/
+/files/backups/
+/files/secrets/
+/files/deception/
+/backups/
+/secrets/
+/uploads/
+/.env
+/robots.txt
+/config.php
+/db_backup.sql
+/wp-config.php
+/.git/config
+/old_site.zip
