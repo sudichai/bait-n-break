@@ -9,11 +9,7 @@ Built with pure Bash. Runs on stock Ubuntu and Kali. No Python/Node/venvs needed
 ## 🚀 Quick Start
 
 ```bash
-# 1. Install dependencies (docker, whiptail, hydra, nmap, etc.)
-./setup.sh
-
-# 2. Launch the lab
-./run.sh
+git clone https://github.com/sudichai/bait-n-break.git && cd bait-n-break && bash setup.sh && bash run.sh
 ```
 
 ```
