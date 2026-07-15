@@ -12,9 +12,7 @@ Built with pure Bash. Runs on stock Ubuntu and Kali. No Python/Node/venvs needed
 git clone https://github.com/sudichai/bait-n-break.git && cd bait-n-break && bash setup.sh && bash run.sh
 ```
 
-> Do **not** use `sudo` with `git clone` — it will break permissions. `setup.sh` uses `sudo` internally only for the specific commands that need it.
->
-> If `setup.sh` hangs on "waiting for dpkg lock", Ubuntu's auto-updater is running. Wait for it to finish, or run: `sudo killall unattended-upgr`
+> Do **not** use `sudo` with `git clone` — it will break permissions. `setup.sh` handles everything automatically including dpkg lock conflicts.
 
 ```
 ┌──────────────────────────┐
