@@ -1,8 +1,6 @@
 # 🔐 bait-n-break
 
-> **Self-contained cybersecurity training lab** — deploy intentionally vulnerable services, then attack them through a menu-driven TUI.
-
-Built with pure Bash. Runs on stock Ubuntu and Kali. No Python/Node/venvs needed for the orchestration layer.
+> **Self-contained cybersecurity training lab** — deploy intentionally vulnerable services, then attack them through a menu-driven TUI. Built with pure Bash. Runs on stock Ubuntu and Kali.
 
 ---
 
@@ -15,18 +13,14 @@ git clone https://github.com/sudichai/bait-n-break.git && cd bait-n-break && bas
 > Do **not** use `sudo` with `git clone` — it will break permissions. `setup.sh` handles everything automatically including dpkg lock conflicts.
 
 ```
-┌──────────────────────────┐
-│       bait-n-break       │
-│                          │
-│  [1] Victim (Target)     │
-│  [2] Attacker (Kali)     │
-│  [3] Exit                │
-└──────────────────────────┘
+┌─────────────────────────────┐
+│        bait-n-break         │
+│                             │
+│  [1] Victim (Target)        │
+│  [2] Attacker (Kali)        │
+│  [3] Exit                   │
+└─────────────────────────────┘
 ```
-
-- **`[1] Victim`** — Deploy the vulnerable target node (web app + SSH/FTP decoys + bait files + monitor)
-- **`[2] Attacker`** — Run exploit scripts against the target (recon → brute-force → web exploits → crawler → malware/C2)
-- **`[3] Exit`** — Clean exit
 
 ---
 
@@ -36,44 +30,67 @@ git clone https://github.com/sudichai/bait-n-break.git && cd bait-n-break && bas
 
 | Component | Details |
 |-----------|---------|
-| 🐍 **Vulnerable Web App** | Flask app with 13 endpoints exposing 8 vulnerability classes |
-| 🔓 **SSH Decoy** | Port `2222`, credentials `admin:admin123` |
+| 🐍 **Vulnerable Web App** | Flask app with 42+ endpoints exposing 50+ vulnerability classes |
+| 🛢️ **MySQL Database** | Port `3306`, weak credentials (`root:root`, `webapp:webapp123`) |
+| 🔓 **SSH Decoy** | Port `2222`, credentials `admin:admin123`, sudo access |
 | 🔓 **FTP Decoy** | Port `2121`, credentials `admin:admin123` |
-| 🍯 **Bait Files** | 7 decoy files — `.env`, `passwords.txt`, `shadow.bak`, `production_dump.sql`, `website_backup.tar.gz`, `payroll_2025.csv`, `employee_records.db` |
+| 🍯 **Bait Files** | 31 decoy files — cloud creds, SSH keys, CI/CD secrets, browser profiles, VPN configs, password lists, source code, logs |
 | 👁️ **Live Monitor** | Tails webapp logs + auth.log + bait file access in real-time |
+| 📊 **Vulnerability Overview** | Dynamic live check showing which vulns are active right now |
 | 💣 **Malware Sim** | EICAR test file, sandboxed ransomware demo, C2 beacon check |
 
-### Vulnerabilities (Kill-Chain Mapped)
+### Vulnerabilities (Kill-Chain Mapped) — 50+
 
-| # | Endpoint | Vulnerability | Phase |
-|---|----------|--------------|-------|
-| 1 | `/admin`, `/files/<area>/` | Exposed admin panel + directory listing | Recon |
-| 2 | `/login` | SQL injection (auth bypass) | Initial Access |
-| 3 | SSH port 2222 | Weak credentials (`admin:admin123`) | Initial Access |
-| 4 | FTP port 2121 | Weak credentials (`admin:admin123`) | Initial Access |
-| 5 | `/ping` | Command injection (`;id`) | Execution |
-| 6 | `/upload` → `/shell/<file>` | Unrestricted upload → webshell | Execution/Persistence |
-| 7 | `/search` | Reflected XSS | Collection |
-| 8 | `/comments` | Stored XSS | Collection |
-| 9 | `/c2/beacon` | Mock C2 beacon | C2 |
-| 10 | `/admin/ransomware-demo` | Remote ransomware trigger | Impact |
+| Phase | Vulnerabilities |
+|-------|----------------|
+| **Recon** | `/admin`, `/env`, `/debug`, `/robots.txt`, `/files/<area>/`, DNS info, Docker exposes ports 2222/2121/3306 |
+| **Initial Access** | SQLi `/login`, Unrestricted upload `/upload`, Weak SSH (2222), Weak FTP (2121), Weak MySQL (3306) |
+| **Execution** | CMDi `/ping`, LFI `/read`, SSRF `/fetch`, XXE `/parse`, Pickle deser `/pickle`, Open Redirect `/redirect`, Arbitrary file download `/download` |
+| **Privilege Escalation** | SUID `find/awk/curl`, Sudo misconfig (`victim` NOPASSWD), Docker socket mounted (`/var/run/docker.sock`) |
+| **Persistence** | SSH key injection `/persist/ssh-key`, Cron backdoor `/persist/cron` |
+| **Credential Access** | IDOR `/users/<id>` (SSN, role, password), LFI `/etc/passwd` + `/etc/shadow`, `/env` leak, JWT none-algorithm `/api/auth` |
+| **Collection** | Bait files via `/files/<area>/<path>`, Reflected XSS `/search`, Stored XSS `/comments` |
+| **Web App Vulns** | CSRF `/admin/transfer` + `/admin/password`, Mass Assignment `/api/profile/update`, Race Condition `/api/coupon/apply`, Weak Crypto `/reset` (predictable token), Session Fixation `/login?sid=`, HTTP Param Pollution `/api/search`, CORS wildcard `*`, Missing security headers, No rate limiting |
+| **Exfiltration** | DNS tunneling `/exfil/dns`, HTTP exfil `/exfil/http` |
+| **C2** | Beacon `/c2/beacon` with remote command execution |
+| **Impact** | Ransomware demo `/admin/ransomware-demo`, Defacement `/admin/deface`, DB wipe `/admin/wipe-db`, Log clearing `/admin/clear-logs` |
 
-### Attacker (Kali) Scenarios
+### Attacker (Kali) Scenarios — 16 modules + 3 chains
 
-| Scenario | Kill-Chain Phase | Tool |
-|----------|-----------------|------|
-| 🔍 Recon scan | Reconnaissance | `nmap` → `/dev/tcp` + banner grab |
-| 🔑 SSH brute-force | Initial Access | `hydra` → `sshpass` |
-| 🔑 FTP brute-force | Initial Access | `hydra` → `curl` |
-| 🔑 HTTP login brute-force | Initial Access | `curl` |
-| 💉 SQL injection | Initial Access | `sqlmap` → hand-rolled payload |
-| ⚡ Command injection | Execution | `curl` |
-| 🐚 Webshell deploy | Execution/Persistence | curl upload + execute |
-| ✖️ XSS (reflected + stored) | Collection | `curl` |
-| 🕷️ Bait file crawler | Collection | Wordlist-based path scanner |
-| 📡 C2 beacon | C2 | `curl` |
-| 🔒 Ransomware trigger | Impact | `POST /admin/ransomware-demo` |
-| ⚡ **Run All Scenarios** | Recon → Impact | Full kill-chain automation |
+| Module | Kill-Chain Phase | Method |
+|--------|-----------------|--------|
+| Recon scan | Recon | `nmap` top 1000 ports + service detection |
+| SSH brute-force | Credential Access | `hydra` / `sshpass` (15 credentials) |
+| FTP brute-force | Credential Access | `hydra` / `curl` (15 credentials) |
+| HTTP brute-force | Credential Access | `curl` POST (15 credentials) |
+| MySQL brute-force | Credential Access | `mysql` client |
+| SQL injection | Execution | `sqlmap` + hand-rolled payloads (4 variants) |
+| Command injection | Execution | `curl` (5 payload variants) |
+| Webshell deploy | Execution | Upload + execute |
+| LFI | Execution | Path traversal (8 file targets) |
+| SSRF | Execution | Internal endpoint enumeration |
+| XXE | Execution | XML external entity (3 file targets) |
+| IDOR | Credential Access | User enumeration (7 IDs) |
+| Pickle deser | Execution | Base64 pickle RCE |
+| Credential harvest | Credential Access | Env dump + LFI + SSH key grab |
+| Docker escape | Priv Esc | Docker socket via `/docker` |
+| Persistence (SSH/cron) | Persistence | Key injection + cron backdoor |
+| Crawler | Collection | 50-path wordlist with delay |
+| C2 beacon | C2 | `curl` (3 attempts) |
+| Ransomware trigger | Impact | `POST /admin/ransomware-demo` |
+| DNS exfiltration | Exfiltration | DNS tunneling |
+| Defacement | Impact | `POST /admin/deface` |
+| DB wipe | Impact | `POST /admin/wipe-db` |
+| Log clearing | Impact | `POST /admin/clear-logs` |
+
+**Multi-Stage Attack Chains:**
+| Chain | Path | Phases |
+|-------|------|--------|
+| **Chain A** | SQLi → Cred Dump → SSH → Docker Escape | 6 stages, data flows between each |
+| **Chain B** | CMDi → Webshell → Persistence → Impact | 4 stages |
+| **Chain C** | SSRF → Internal Enum → LFI → DNS Exfil | 4 stages |
+
+**Full Kill-Chain:** `Run All Scenarios` runs 9 phases with realistic delays between each.
 
 ---
 
@@ -81,52 +98,50 @@ git clone https://github.com/sudichai/bait-n-break.git && cd bait-n-break && bas
 
 ```
 bait-n-break/
-├── run.sh                              # Single entry point
-├── setup.sh                            # Idempotent dependency installer
+├── run.sh
+├── setup.sh
 ├── bait_n_break/
 │   ├── shared/
-│   │   ├── config.sh                   # Path constants, TARGET_IP/PORT
-│   │   ├── lib_ui.sh                   # UI abstraction (whiptail → dialog → plain)
-│   │   └── lib_state.sh               # Sole reader/writer of .state/*
+│   │   ├── config.sh
+│   │   ├── lib_ui.sh
+│   │   └── lib_state.sh
 │   ├── tui/
-│   │   ├── main_menu.sh               # Role selection menu
-│   │   ├── victim_dashboard.sh         # Victim submenu
-│   │   └── attacker_console.sh         # Attacker submenu
+│   │   ├── main_menu.sh
+│   │   ├── victim_dashboard.sh
+│   │   └── attacker_console.sh
 │   ├── victim/
-│   │   ├── lib_bait.sh                 # Bait file generator
-│   │   ├── lib_webapp.sh               # Docker Compose wrapper
-│   │   ├── lib_monitor.sh              # Log + file access monitor
-│   │   ├── lib_malware_sim.sh          # EICAR, ransomware, C2 sim
+│   │   ├── lib_bait.sh
+│   │   ├── lib_webapp.sh
+│   │   ├── lib_monitor.sh
+│   │   ├── lib_malware_sim.sh
+│   │   ├── lib_vuln_overview.sh
 │   │   └── webapp/
-│   │       ├── app.py                  # Flask app (vulnerable by design)
+│   │       ├── app.py
 │   │       ├── Dockerfile
-│   │       ├── docker-compose.yml      # webapp + SSH decoy + FTP decoy
+│   │       ├── docker-compose.yml
 │   │       └── requirements.txt
 │   └── attacker/
-│       ├── lib_results.sh              # Attack results tracker
-│       ├── lib_target.sh               # Target IP/port config
-│       ├── lib_recon.sh                # Port scan + banner grab
-│       ├── lib_bruteforce.sh           # SSH/FTP/HTTP brute-force
-│       ├── lib_web_exploit.sh          # SQLi, CMDi, webshell, XSS
-│       ├── lib_crawler.sh              # Leaked file crawler
-│       ├── lib_malware_c2.sh           # C2 beacon + ransomware trigger
+│       ├── lib_results.sh
+│       ├── lib_target.sh
+│       ├── lib_recon.sh
+│       ├── lib_bruteforce.sh
+│       ├── lib_web_exploit.sh
+│       ├── lib_crawler.sh
+│       ├── lib_malware_c2.sh
+│       ├── lib_post_exploit.sh
 │       └── wordlists/
-│           └── common_paths.txt        # Crawler wordlist
-├── docs/
-│   └── superpowers/
-│       ├── plans/                      # Implementation plans
-│       └── specs/                      # Design specifications
-└── .state/                             # Runtime state (gitignored)
+│           └── common_paths.txt (50 paths)
+└── .state/ (runtime, gitignored)
 ```
 
 ---
 
 ## 🛡️ Safety
 
-- **All credentials are dummy** — `admin:admin123`, `root:toor`, fake AWS keys, etc.
+- **All credentials are dummy** — `admin:admin123`, `root:toor`, fake AWS/GCP/Azure keys
 - **All bait content is inert** — no real secrets, safe to leave on disk
 - **Malware sim is sandboxed** — ransomware demo confined to `ransomware_target/`
-- **Docker isolation** — vulnerable services run in containers, not on bare host
+- **Docker isolation** — vulnerable services run in containers
 - **Lab-only** — never deploy outside an isolated training network
 
 ---
@@ -134,31 +149,8 @@ bait-n-break/
 ## 📋 Requirements
 
 - **OS:** Ubuntu, Kali, or Debian
-- **Dependencies:** Docker, Docker Compose, `whiptail` (or `dialog`)
-- **Optional (attacker):** `hydra`, `sqlmap`, `nmap`, `sshpass` — installed best-effort by `setup.sh`, but all attack scripts have hand-rolled fallbacks
-
----
-
-## 🔧 Development
-
-```bash
-# All runtime state lives under .state/
-.state/
-├── victim_status            # "deployed" or "not_deployed"
-├── bait_manifest.txt        # List of generated bait files
-├── incident_log.txt         # Timestamped security events
-├── bait_access.log          # Bait file access tracker
-├── attack_results.txt       # Attacker scenario results
-├── attacker_target          # Persisted TARGET_IP:TARGET_PORT
-└── bait/                    # Generated bait files
-    ├── backups/             # passwords.txt, shadow.bak, etc.
-    ├── secrets/             # payroll.csv, employee_records.db
-    └── deception/           # .env, eicar_test.txt, ransomware_target/
-```
-
-- Every library file is a pure function collection, sourced not executed
-- `shared/lib_state.sh` and `attacker/lib_results.sh` are the sole readers/writers of their respective `.state/*` files — other modules call their functions
-- Code comments in English
+- **Dependencies:** Docker, Docker Compose v2, `whiptail` (or `dialog`)
+- **Optional:** `hydra`, `sqlmap`, `nmap`, `sshpass` — installed by `setup.sh`, fallbacks built-in
 
 ---
 
