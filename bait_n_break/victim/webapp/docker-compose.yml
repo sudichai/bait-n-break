@@ -7,6 +7,22 @@ services:
       - ../../../.state/bait/backups:/bait/backups:ro
       - ../../../.state/bait/secrets:/bait/secrets:ro
       - ../../../.state/bait/deception:/bait/deception
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    depends_on:
+      - db
+
+  db:
+    image: mysql:5.7
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=production_db
+      - MYSQL_USER=webapp
+      - MYSQL_PASSWORD=webapp123
+    ports:
+      - "3306:3306"
+    volumes:
+      - db-data:/var/lib/mysql
     restart: unless-stopped
 
   ssh-decoy:
@@ -17,6 +33,7 @@ services:
       - PASSWORD_ACCESS=true
       - USER_NAME=admin
       - USER_PASSWORD=admin123
+      - SUDO_ACCESS=true
     ports:
       - "2222:2222"
     restart: unless-stopped
@@ -31,3 +48,6 @@ services:
       - "2121:21"
       - "21100-21110:21100-21110"
     restart: unless-stopped
+
+volumes:
+  db-data:
