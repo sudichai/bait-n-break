@@ -7,6 +7,7 @@ RUN apt-get update \
         cron \
         sudo \
         curl \
+        git \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -m -s /bin/bash victim \
