@@ -7,31 +7,20 @@ set -uo pipefail
 log() { echo "[setup] $*"; }
 
 wait_for_apt() {
-    local waited=0
     while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || \
           sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
         local holder
-        holder="$(sudo fuser /var/lib/dpkg/lock-frontend 2>/dev/null | tr -d ' ') $(sudo fuser /var/lib/apt/lists/lock 2>/dev/null | tr -d ' ')"
-        holder="$(echo "$holder" | tr -d ' ')"
-        if [ "$waited" -ge 30 ]; then
-            local is_unattended
-            is_unattended="$(ps -p "${holder%% *}" -o comm= 2>/dev/null)"
-            if [ "$is_unattended" = "unattended-upgr" ]; then
-                log "killing unattended-upgrades (PID ${holder%% *}) to release dpkg lock"
-                sudo kill "${holder%% *}" 2>/dev/null || true
-                sleep 2
-                continue
-            fi
+        holder="$(sudo fuser /var/lib/dpkg/lock-frontend 2>/dev/null || sudo fuser /var/lib/apt/lists/lock 2>/dev/null)"
+        holder="${holder%% *}"
+        if [ -n "$holder" ]; then
+            local comm
+            comm="$(ps -p "$holder" -o comm= 2>/dev/null)"
+            log "killing ${comm} (PID $holder) to release dpkg lock"
+            sudo kill "$holder" 2>/dev/null || sudo kill -9 "$holder" 2>/dev/null || true
+            sleep 1
+        else
+            sleep 1
         fi
-        if [ "$waited" -ge 120 ]; then
-            log "dpkg lock still held after 120s; giving up"
-            log "lock holder PID(s): ${holder:-unknown}"
-            log "Run manually: sudo kill ${holder:-} && bash setup.sh"
-            return 1
-        fi
-        log "dpkg lock held by PID(s): ${holder:-unknown} — waiting (${waited}s)..."
-        sleep 5
-        waited=$((waited + 5))
     done
     return 0
 }
