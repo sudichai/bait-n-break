@@ -20,6 +20,11 @@ victim_dashboard() {
     # the TUI process if the user exits without going through Teardown first.
     trap 'monitor_stop 2>/dev/null' EXIT
 
+    _pause() {
+        echo ""
+        read -r -p "Press Enter to continue..." _
+    }
+
     while true; do
         local choice
         choice="$(ui_menu "Victim Dashboard" "Select an action:" \
@@ -35,7 +40,7 @@ victim_dashboard() {
         case "$choice" in
             1) victim_deploy ;;
             2) victim_status ;;
-            3) attacker_run_and_pause victim_vuln_overview ;;
+            3) clear; victim_vuln_overview; _pause ;;
             4) victim_inventory ;;
             5) victim_monitor_view ;;
             6) victim_malware_menu ;;
