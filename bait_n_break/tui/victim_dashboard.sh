@@ -13,6 +13,8 @@ victim_dashboard() {
     source "${BNB_ROOT}/bait_n_break/victim/lib_monitor.sh"
     # shellcheck source=bait_n_break/victim/lib_malware_sim.sh
     source "${BNB_ROOT}/bait_n_break/victim/lib_malware_sim.sh"
+    # shellcheck source=bait_n_break/victim/lib_vuln_overview.sh
+    source "${BNB_ROOT}/bait_n_break/victim/lib_vuln_overview.sh"
 
     # Background log-tailing jobs started by monitor_start() must not outlive
     # the TUI process if the user exits without going through Teardown first.
@@ -23,20 +25,22 @@ victim_dashboard() {
         choice="$(ui_menu "Victim Dashboard" "Select an action:" \
             "1" "Deploy / Start victim services" \
             "2" "Service Status Panel" \
-            "3" "Honey-Asset Inventory" \
-            "4" "Access & Incident Monitor" \
-            "5" "Malware/Ransomware Simulation" \
-            "6" "Stop / Teardown" \
-            "7" "Back")" || break
+            "3" "Vulnerability Overview" \
+            "4" "Honey-Asset Inventory" \
+            "5" "Access & Incident Monitor" \
+            "6" "Malware/Ransomware Simulation" \
+            "7" "Stop / Teardown" \
+            "8" "Back")" || break
 
         case "$choice" in
             1) victim_deploy ;;
             2) victim_status ;;
-            3) victim_inventory ;;
-            4) victim_monitor_view ;;
-            5) victim_malware_menu ;;
-            6) victim_teardown ;;
-            7|"") break ;;
+            3) attacker_run_and_pause victim_vuln_overview ;;
+            4) victim_inventory ;;
+            5) victim_monitor_view ;;
+            6) victim_malware_menu ;;
+            7) victim_teardown ;;
+            8|"") break ;;
         esac
     done
 }
@@ -50,6 +54,8 @@ victim_deploy() {
         state_set_status "deployed"
         monitor_start
         ui_msgbox "Deploy" "${bait_warning}Victim services deployed. Bait files generated and web app started."
+        victim_vuln_overview
+        read -r -p "Press Enter to return to dashboard..." _
     else
         ui_error "Deploy" "${bait_warning}Failed to start web app. Is Docker installed and running?"
     fi

@@ -21,7 +21,7 @@ attacker_console() {
         choice="$(ui_menu "Attacker Console" "Select an action:" \
             "1" "Set/Change Target" \
             "2" "Recon" \
-            "3" "Brute-force (SSH/FTP/HTTP)" \
+            "3" "Brute-force (SSH/FTP/HTTP/MySQL)" \
             "4" "Web Exploitation (SQLi/CMDi/XSS/Webshell)" \
             "5" "Advanced Web (LFI/SSRF/XXE/IDOR/Pickle)" \
             "6" "Privilege Escalation & Persistence" \
@@ -30,8 +30,11 @@ attacker_console() {
             "9" "Malware/C2" \
             "10" "Impact (Deface/Wipe/Clear)" \
             "11" "Run All Scenarios" \
-            "12" "Results Summary" \
-            "13" "Back")" || break
+            "12" "Chain A: SQLi->Docker Escape" \
+            "13" "Chain B: CMDi->Impact" \
+            "14" "Chain C: SSRF->Exfil" \
+            "15" "Results Summary" \
+            "16" "Back")" || break
 
         case "$choice" in
             1) target_prompt ;;
@@ -45,8 +48,11 @@ attacker_console() {
             9) attacker_run_and_pause attacker_malware_c2_menu ;;
             10) attacker_run_and_pause attacker_impact_menu ;;
             11) attacker_run_and_pause attacker_run_all ;;
-            12) ui_msgbox "Results Summary" "$(results_summary)" ;;
-            13|"") break ;;
+            12) attacker_run_and_pause chain_a_sqli_to_docker ;;
+            13) attacker_run_and_pause chain_b_cmdi_to_impact ;;
+            14) attacker_run_and_pause chain_c_ssrf_to_exfil ;;
+            15) ui_msgbox "Results Summary" "$(results_summary)" ;;
+            16|"") break ;;
         esac
     done
 }

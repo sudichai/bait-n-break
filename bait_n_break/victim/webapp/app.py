@@ -20,14 +20,17 @@ Vulnerability coverage (kill-chain mapped):
               /admin/clear-logs
 """
 import base64
+import hashlib
+import json
 import os
 import pickle
 import sqlite3
 import subprocess
+import time
 import xml.etree.ElementTree as ET
 from io import StringIO
 
-from flask import Flask, request, render_template_string, send_from_directory, jsonify
+from flask import Flask, request, render_template_string, send_from_directory, jsonify, make_response
 
 app = Flask(__name__)
 app.config["DEBUG"] = True
@@ -44,6 +47,13 @@ BAIT_AREAS = {
 }
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+JWT_SECRET = "super-secret-jwt-key-2025"
+SESSION_TOKENS = {}
+PASSWORD_RESET_TOKENS = {}
+COUPON_CODES = {"WELCOME50": 1, "SAVE20": 3}
+COUPON_USERS = {}
+TRANSFERS = [{"id": 1, "from": "Alice Admin", "to": "Bob Builder", "amount": 1000}]
 
 
 def get_db():
@@ -549,6 +559,277 @@ def admin_clear_logs():
         except Exception:
             pass
     return jsonify({"status": "logs cleared", "files": cleared})
+
+
+# --- JWT helpers ---
+
+def jwt_encode(payload, secret=JWT_SECRET):
+    header = base64.urlsafe_b64encode(json.dumps({"alg": "HS256", "typ": "JWT"}).encode()).decode().rstrip("=")
+    body = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+    sig_input = f"{header}.{body}".encode()
+    sig = base64.urlsafe_b64encode(hashlib.sha256(sig_input + secret.encode()).digest()).decode().rstrip("=")
+    return f"{header}.{body}.{sig}"
+
+
+def jwt_decode(token, secret=JWT_SECRET):
+    try:
+        parts = token.split(".")
+        if len(parts) != 3:
+            return None
+        header_b64 = parts[0] + "=" * (4 - len(parts[0]) % 4) if len(parts[0]) % 4 else parts[0]
+        header = json.loads(base64.urlsafe_b64decode(header_b64))
+        body_b64 = parts[1] + "=" * (4 - len(parts[1]) % 4) if len(parts[1]) % 4 else parts[1]
+        body = json.loads(base64.urlsafe_b64decode(body_b64))
+        if header.get("alg") == "none":
+            return body
+        sig_input = f"{parts[0]}.{parts[1]}".encode()
+        expected = base64.urlsafe_b64encode(hashlib.sha256(sig_input + secret.encode()).digest()).decode().rstrip("=")
+        if parts[2] == expected:
+            return body
+        return None
+    except Exception:
+        return None
+
+
+# --- JWT: none algorithm vulnerability ---
+
+@app.route("/api/auth", methods=["POST"])
+def api_auth():
+    data = request.get_json(silent=True) or {}
+    username = data.get("username", "")
+    password = data.get("password", "")
+    conn = get_db()
+    try:
+        row = conn.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password)).fetchone()
+    finally:
+        conn.close()
+    if row:
+        token = jwt_encode({"username": row["username"], "role": row["role"], "exp": int(time.time()) + 3600})
+        return jsonify({"token": token})
+    return jsonify({"error": "invalid credentials"}), 401
+
+
+@app.route("/api/admin")
+def api_admin():
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if not token:
+        return jsonify({"error": "no token"}), 401
+    payload = jwt_decode(token)
+    if payload and payload.get("role") == "administrator":
+        return jsonify({"secret_data": "flag{lab-jwt-admin-flag}", "users": "use /users endpoint"})
+    if payload:
+        return jsonify({"error": f"role '{payload.get('role')}' insufficient"}), 403
+    return jsonify({"error": "invalid token"}), 401
+
+
+# --- CSRF: no CSRF token on sensitive actions ---
+
+@app.route("/admin/transfer", methods=["GET", "POST"])
+def admin_transfer():
+    if request.method == "GET":
+        rows = "".join(f"<li>{t['id']}: {t['from']} -> {t['to']} ${t['amount']}</li>" for t in TRANSFERS)
+        return f"""<h1>Money Transfer</h1><ul>{rows}</ul>
+<form method="post">
+  <input name="to" placeholder="recipient">
+  <input name="amount" placeholder="amount" type="number">
+  <button type="submit">Transfer</button>
+</form>"""
+    TRANSFERS.append({
+        "id": len(TRANSFERS) + 1,
+        "from": "Alice Admin",
+        "to": request.form.get("to", "unknown"),
+        "amount": int(request.form.get("amount", 0))
+    })
+    return jsonify({"status": "transferred", "transfer_id": TRANSFERS[-1]["id"]})
+
+
+@app.route("/admin/password", methods=["GET", "POST"])
+def admin_password():
+    if request.method == "GET":
+        return """<h1>Change Password</h1>
+<form method="post">
+  <input name="new_password" placeholder="new password" type="password">
+  <button type="submit">Change</button>
+</form>"""
+    new_pw = request.form.get("new_password", "")
+    return jsonify({"status": "password changed to", "new_password": new_pw})
+
+
+# --- Open Redirect ---
+
+@app.route("/redirect")
+def open_redirect():
+    url = request.args.get("url", "/")
+    return f"""<html><head><meta http-equiv="refresh" content="0;url={url}"></head>
+<body>Redirecting to {url}...<br><a href="{url}">Click here</a></body></html>"""
+
+
+# --- Session Fixation ---
+
+@app.route("/login")
+def login_fixation():
+    sid = request.args.get("sid")
+    if sid:
+        return """<form method="post">
+  <input type="hidden" name="sid" value="{}">
+  <input name="username" placeholder="username">
+  <input name="password" placeholder="password" type="password">
+  <button type="submit">Login</button>
+</form>""".format(sid)
+    return """<form method="post">
+  <input name="username" placeholder="username">
+  <input name="password" placeholder="password" type="password">
+  <button type="submit">Login</button>
+</form>"""
+
+
+# --- CORS Misconfiguration ---
+
+@app.after_request
+def add_cors(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    return response
+
+
+# --- Mass Assignment ---
+
+@app.route("/api/profile/update", methods=["POST"])
+def api_profile_update():
+    data = request.get_json(silent=True) or {}
+    username = data.get("username", "")
+    conn = get_db()
+    try:
+        row = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+        if not row:
+            return jsonify({"error": "user not found"}), 404
+        new_role = data.get("role", row["role"])
+        new_ssn = data.get("ssn", row["ssn"])
+        new_password = data.get("password", row["password"])
+        conn.execute("UPDATE users SET role=?, ssn=?, password=? WHERE username=?",
+                     (new_role, new_ssn, new_password, username))
+        conn.commit()
+        updated = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+        return jsonify(dict(updated))
+    finally:
+        conn.close()
+
+
+# --- Weak Crypto: Predictable reset token ---
+
+@app.route("/reset", methods=["GET", "POST"])
+def password_reset():
+    if request.method == "GET":
+        return """<h1>Password Reset</h1>
+<form method="post">
+  <input name="username" placeholder="username">
+  <button type="submit">Request Reset Token</button>
+</form>"""
+    username = request.form.get("username", "")
+    import random
+    random.seed(int(time.time()))
+    token = str(random.randint(0, 9999)).zfill(4)
+    PASSWORD_RESET_TOKENS[username] = token
+    return jsonify({"username": username, "reset_token": token, "hint": "token is 4-digit predictable"})
+
+
+@app.route("/reset/confirm", methods=["POST"])
+def reset_confirm():
+    data = request.get_json(silent=True) or {}
+    username = data.get("username", "")
+    token = data.get("token", "")
+    new_password = data.get("new_password", "")
+    if PASSWORD_RESET_TOKENS.get(username) == token:
+        conn = get_db()
+        try:
+            conn.execute("UPDATE users SET password = ? WHERE username = ?", (new_password, username))
+            conn.commit()
+        finally:
+            conn.close()
+        return jsonify({"status": "password reset", "username": username})
+    return jsonify({"error": "invalid token"}), 403
+
+
+# --- HTTP Parameter Pollution ---
+
+@app.route("/api/search")
+def api_search():
+    q = request.args.getlist("q")
+    if len(q) > 1:
+        return jsonify({"results": f"parameter pollution detected: {len(q)} values", "values": q})
+    return jsonify({"results": f"searching for: {q[0] if q else 'nothing'}"})
+
+
+# --- Race Condition: Double coupon use ---
+
+@app.route("/api/coupon/apply", methods=["POST"])
+def coupon_apply():
+    data = request.get_json(silent=True) or {}
+    code = data.get("code", "").upper()
+    user = data.get("user", "anon")
+    if code not in COUPON_CODES:
+        return jsonify({"error": "invalid coupon"}), 400
+    user_key = f"{user}:{code}"
+    if user_key not in COUPON_USERS:
+        COUPON_USERS[user_key] = 1
+    else:
+        COUPON_USERS[user_key] += 1
+    uses_left = COUPON_CODES[code] - COUPON_USERS.get(user_key, 0)
+    return jsonify({
+        "status": "applied" if uses_left >= 0 else "overused",
+        "code": code,
+        "user": user,
+        "use_count": COUPON_USERS[user_key],
+        "uses_remaining": max(0, uses_left)
+    })
+
+
+# --- Arbitrary File Download ---
+
+@app.route("/download")
+def download_file():
+    filename = request.args.get("file", "/etc/hostname")
+    try:
+        directory = os.path.dirname(os.path.abspath(filename))
+        name = os.path.basename(filename)
+        return send_from_directory(directory, name, as_attachment=True)
+    except Exception as exc:
+        return f"Download error: {exc}", 500
+
+
+# --- Information Disclosure: API error leak ---
+
+@app.route("/api/error")
+def api_error():
+    try:
+        1 / 0
+    except Exception as exc:
+        return f"""<h1>Internal Server Error</h1>
+<pre>
+Exception: {type(exc).__name__}
+Message: {exc}
+Traceback (most recent call last):
+  File "/app/app.py", line api_error, in api_error
+    1 / 0
+ZeroDivisionError: division by zero
+
+Python: {os.sys.version}
+Path: {os.path.abspath(__file__)}
+</pre>""", 500
+
+
+@app.route("/api/version")
+def api_version():
+    return jsonify({
+        "app": "bait-n-break-corp-portal",
+        "version": "2.3.1",
+        "python": os.sys.version,
+        "flask": "3.0.3",
+        "database": "SQLite 3",
+        "debug": app.config["DEBUG"],
+        "hostname": os.uname().nodename,
+    })
 
 
 if __name__ == "__main__":
