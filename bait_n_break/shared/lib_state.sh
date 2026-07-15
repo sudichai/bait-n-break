@@ -5,7 +5,16 @@
 # shared/config.sh for why).
 
 state_init() {
-    mkdir -p "${BNB_STATE_DIR}" "${BNB_BAIT_BACKUPS_DIR}" "${BNB_BAIT_SECRETS_DIR}" "${BNB_BAIT_DECEPTION_DIR}"
+    if [ ! -w "${BNB_ROOT}" ]; then
+        echo "ERROR: Cannot write to ${BNB_ROOT}" >&2
+        echo "Fix: sudo chown -R \$USER:\$USER ${BNB_ROOT}" >&2
+        exit 1
+    fi
+    mkdir -p "${BNB_STATE_DIR}" "${BNB_BAIT_BACKUPS_DIR}" "${BNB_BAIT_SECRETS_DIR}" "${BNB_BAIT_DECEPTION_DIR}" || {
+        echo "ERROR: Failed to create .state/ directories under ${BNB_ROOT}" >&2
+        echo "Fix: sudo chown -R \$USER:\$USER ${BNB_ROOT}" >&2
+        exit 1
+    }
     touch "${BNB_STATE_FILE}" "${BNB_BAIT_MANIFEST}" "${BNB_INCIDENT_LOG}" "${BNB_BAIT_ACCESS_LOG}" "${BNB_ATTACK_RESULTS}" "${BNB_TARGET_FILE}"
 }
 

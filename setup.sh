@@ -6,6 +6,26 @@ set -uo pipefail
 
 log() { echo "[setup] $*"; }
 
+wait_for_apt() {
+    local waited=0
+    while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || \
+          sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
+        if [ "$waited" -ge 120 ]; then
+            log "dpkg lock still held after 120s; giving up"
+            return 1
+        fi
+        log "waiting for dpkg lock (held by another process)..."
+        sleep 3
+        waited=$((waited + 3))
+    done
+    return 0
+}
+
+apt_install() {
+    wait_for_apt || return 1
+    sudo apt-get install -y "$@"
+}
+
 detect_os() {
     if [ -f /etc/os-release ]; then
         # shellcheck disable=SC1091
@@ -22,7 +42,7 @@ ensure_pkg() {
         log "$pkg already installed"
     else
         log "installing $pkg"
-        sudo apt-get install -y "$pkg"
+        apt_install "$pkg"
     fi
 }
 
@@ -31,6 +51,7 @@ main() {
     os="$(detect_os)"
     case "$os" in
         ubuntu|kali|debian)
+            wait_for_apt
             sudo apt-get update
             ensure_pkg whiptail
             ensure_pkg inotify-tools
@@ -40,7 +61,7 @@ main() {
             ensure_pkg nmap
             if ! command -v docker >/dev/null 2>&1; then
                 log "installing docker.io"
-                sudo apt-get install -y docker.io docker-compose-v2
+                apt_install docker.io docker-compose-v2
                 sudo systemctl enable --now docker || true
             else
                 log "docker already installed"
@@ -48,7 +69,7 @@ main() {
 
             if ! docker compose version >/dev/null 2>&1; then
                 log "docker compose plugin not found, trying legacy docker-compose"
-                sudo apt-get install -y docker-compose || log "docker-compose also unavailable; only docker engine is installed"
+                apt_install docker-compose || log "docker-compose also unavailable; only docker engine is installed"
             fi
             ;;
         *)
