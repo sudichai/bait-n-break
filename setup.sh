@@ -10,13 +10,18 @@ wait_for_apt() {
     local waited=0
     while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || \
           sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
+        local holder
+        holder="$(sudo fuser /var/lib/dpkg/lock-frontend 2>/dev/null | tr -d ' ') $(sudo fuser /var/lib/apt/lists/lock 2>/dev/null | tr -d ' ')"
+        holder="$(echo "$holder" | tr -d ' ')"
         if [ "$waited" -ge 120 ]; then
             log "dpkg lock still held after 120s; giving up"
+            log "lock holder PID(s): ${holder:-unknown}"
+            log "You can wait or kill the holder: sudo kill ${holder:-}"
             return 1
         fi
-        log "waiting for dpkg lock (held by another process)..."
-        sleep 3
-        waited=$((waited + 3))
+        log "dpkg lock held by PID(s): ${holder:-unknown} — waiting (${waited}s/120s)..."
+        sleep 5
+        waited=$((waited + 5))
     done
     return 0
 }
