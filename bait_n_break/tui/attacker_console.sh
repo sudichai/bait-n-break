@@ -75,15 +75,48 @@ attacker_malware_c2_menu() {
 }
 
 attacker_run_all() {
-    echo "=== Run All Scenarios: full kill-chain against ${TARGET_IP:-<not set>} ==="
+    echo ""
+    echo "=============================================="
+    echo "  FULL KILL-CHAIN ATTACK"
+    echo "  Target: ${TARGET_IP:-<not set>}"
+    echo "  Phases: Recon -> Brute Force -> Web Exploit -> Crawler -> Malware/C2"
+    echo "=============================================="
+    echo ""
     target_ensure_set || { echo "No target set - aborting Run All Scenarios."; return 1; }
     results_clear
-    recon_scan
-    attacker_bruteforce_menu
-    attacker_web_exploit_menu
-    crawl_leaked_files
-    attacker_malware_c2_menu
+
     echo ""
-    echo "=== Run All Scenarios complete ==="
+    echo ">>> PHASE 1/5: RECONNAISSANCE <<<"
+    recon_scan
+    echo "    [*] phase complete, pausing 2s..."
+    sleep 2
+
+    echo ""
+    echo ">>> PHASE 2/5: CREDENTIAL ACCESS (BRUTE FORCE) <<<"
+    attacker_bruteforce_menu
+    echo "    [*] phase complete, pausing 2s..."
+    sleep 2
+
+    echo ""
+    echo ">>> PHASE 3/5: EXECUTION (WEB EXPLOITATION) <<<"
+    attacker_web_exploit_menu
+    echo "    [*] phase complete, pausing 2s..."
+    sleep 2
+
+    echo ""
+    echo ">>> PHASE 4/5: COLLECTION (BAIT EXFILTRATION) <<<"
+    crawl_leaked_files
+    echo "    [*] phase complete, pausing 2s..."
+    sleep 2
+
+    echo ""
+    echo ">>> PHASE 5/5: IMPACT (MALWARE/C2) <<<"
+    attacker_malware_c2_menu
+
+    echo ""
+    echo "=============================================="
+    echo "  FULL KILL-CHAIN COMPLETE"
+    echo "=============================================="
+    echo ""
     results_summary
 }
