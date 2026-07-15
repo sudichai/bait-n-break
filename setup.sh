@@ -40,10 +40,15 @@ main() {
             ensure_pkg nmap
             if ! command -v docker >/dev/null 2>&1; then
                 log "installing docker.io"
-                sudo apt-get install -y docker.io docker-compose-plugin
+                sudo apt-get install -y docker.io docker-compose-v2
                 sudo systemctl enable --now docker || true
             else
                 log "docker already installed"
+            fi
+
+            if ! docker compose version >/dev/null 2>&1; then
+                log "docker compose plugin not found, trying legacy docker-compose"
+                sudo apt-get install -y docker-compose || log "docker-compose also unavailable; only docker engine is installed"
             fi
             ;;
         *)

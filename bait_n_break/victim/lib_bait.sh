@@ -91,12 +91,12 @@ bait_generate_employee_db() {
 bait_generate_all() {
     local rc=0
     state_manifest_clear
-    bait_generate_env || rc=1
-    bait_generate_passwords || rc=1
-    bait_generate_shadow_dump || rc=1
-    bait_generate_db_dump || rc=1
-    bait_generate_source_backup || rc=1
-    bait_generate_payroll || rc=1
-    bait_generate_employee_db || rc=1
+    bait_generate_env            || { rc=1; state_incident_append "bait" "FAILED: .env"; }
+    bait_generate_passwords      || { rc=1; state_incident_append "bait" "FAILED: passwords.txt"; }
+    bait_generate_shadow_dump    || { rc=1; state_incident_append "bait" "FAILED: shadow.bak"; }
+    bait_generate_db_dump        || { rc=1; state_incident_append "bait" "FAILED: production_dump.sql"; }
+    bait_generate_source_backup  || { rc=1; state_incident_append "bait" "FAILED: website_backup.tar.gz"; }
+    bait_generate_payroll        || { rc=1; state_incident_append "bait" "FAILED: payroll_2025.csv"; }
+    bait_generate_employee_db    || { rc=1; state_incident_append "bait" "FAILED: employee_records.db"; }
     return "$rc"
 }
