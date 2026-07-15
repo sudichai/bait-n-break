@@ -5,7 +5,7 @@
 # shared/config.sh for why).
 
 monitor_watch_webapp() {
-    ( cd "${BNB_WEBAPP_DIR}" && docker compose logs -f webapp ) 2>&1 | while IFS= read -r line; do
+    ( cd "${BNB_WEBAPP_DIR}" && _webapp_docker compose logs -f webapp ) 2>&1 | while IFS= read -r line; do
         state_incident_append "webapp" "$line"
     done &
 }
@@ -52,7 +52,7 @@ monitor_start() {
 }
 
 monitor_stop() {
-    pkill -f "docker compose logs -f webapp" 2>/dev/null
+    pkill -f "compose logs -f webapp" 2>/dev/null
     pkill -f "tail -F /var/log/auth.log" 2>/dev/null
     pkill -f "inotifywait -m -r" 2>/dev/null
     if [ -n "${BNB_MONITOR_BAIT_POLL_PID:-}" ]; then

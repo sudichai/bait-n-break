@@ -67,6 +67,11 @@ main() {
                 log "installing docker.io"
                 apt_install docker.io docker-compose-v2
                 sudo systemctl enable --now docker || true
+                local target_user="${SUDO_USER:-$USER}"
+                if [ "$target_user" != "root" ]; then
+                    sudo usermod -aG docker "$target_user"
+                    log "added $target_user to docker group"
+                fi
             else
                 log "docker already installed"
             fi
@@ -81,6 +86,11 @@ main() {
             ;;
     esac
     log "Setup complete. Run ./run.sh to start bait-n-break."
+    if groups | grep -q docker 2>/dev/null; then
+        true
+    else
+        log "NOTE: You may need to log out/in or run: newgrp docker && bash run.sh"
+    fi
 }
 
 main "$@"
