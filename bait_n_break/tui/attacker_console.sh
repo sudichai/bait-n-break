@@ -141,48 +141,40 @@ attacker_console() {
         _draw_target_line
 
         local table_y=3
-        local table_h=$((h - table_y - 1))
         local total_w=$((_C1 + _C2 + _C3 + _C4 + 5))
 
         # top border
-        _table_border "$table_y" 0 "$total_w" "╔" "╦" "╗" "═"
+        _table_border "$table_y" 0 "$total_w" "+" "+" "+" "-"
 
         # header
         tput cup $((table_y + 1)) 0
-        printf '\033[37;44m║ %-*s ║ %-*s ║ %-*s ║ %-*s ║\033[0m' \
+        printf '| %-*s | %-*s | %-*s | %-*s |' \
             "$_C1" "#" "$_C2" "ATTACK VECTOR" "$_C3" "OPSEC" "$_C4" "RESULT"
 
         # separator
-        _table_border $((table_y + 2)) 0 "$total_w" "╠" "╬" "╣" "═"
+        _table_border $((table_y + 2)) 0 "$total_w" "+" "+" "+" "-"
 
         local i line_y
         for ((i = 0; i < VEC_COUNT; i++)); do
             line_y=$((table_y + 3 + i))
             local num="$(printf '%2d' $((i + 1)))"
-            local name="${VEC_NAME[$i]}"
             local desc="${VEC_DESC[$i]}"
             local ops="${VEC_OPSEC[$i]}"
             local res="${VEC_RESULT[$i]}"
 
-            local ops_color="\033[37m"
-            case "$ops" in quiet) ops_color="\033[32m";; medium) ops_color="\033[33m";; loud) ops_color="\033[31m";; esac
-
-            local res_color="\033[90m"
-            case "$res" in VULN) res_color="\033[32m";; FAIL) res_color="\033[31m";; esac
-
             tput cup "$line_y" 0
             if [ "$i" = "$sel" ]; then
-                printf '\033[30;46m║ \033[1m%s \033[0;30;46m│ \033[1m%-*s \033[0;30;46m│ %s%-*s \033[0;30;46m│ %s%-*s \033[0;30;46m║\033[0m' \
-                    "$num" "$((_C2 - 2))" "$desc" "$ops_color" "$((_C3 - 2))" "$ops" "$res_color" "$((_C4 - 2))" "$res"
+                printf '\033[7m| %s | %-*s | %-*s | %-*s |\033[0m' \
+                    "$num" "$((_C2 - 2))" "$desc" "$((_C3 - 2))" "$ops" "$((_C4 - 2))" "$res"
             else
-                printf '║ %s │ %-*s │ %s%-*s\033[0m │ %s%-*s\033[0m ║' \
-                    "$num" "$((_C2 - 2))" "$desc" "$ops_color" "$((_C3 - 2))" "$ops" "$res_color" "$((_C4 - 2))" "$res"
+                printf '| %s | %-*s | %-*s | %-*s |' \
+                    "$num" "$((_C2 - 2))" "$desc" "$((_C3 - 2))" "$ops" "$((_C4 - 2))" "$res"
             fi
         done
 
         # separator before actions
         local sep_y=$((table_y + 3 + VEC_COUNT))
-        _table_border "$sep_y" 0 "$total_w" "╟" "╫" "╢" "─"
+        _table_border "$sep_y" 0 "$total_w" "+" "+" "+" "-"
 
         # action rows
         local actions=(
@@ -196,24 +188,22 @@ attacker_console() {
             local act_y=$((sep_y + 1 + ai))
             tput cup "$act_y" 0
             if [ "$((VEC_COUNT + ai))" = "$sel" ]; then
-                printf '\033[30;46m║  \033[1m%s\033[0;30;46m  │ \033[1m%-*s\033[0;30;46m │ %*s │ %*s ║\033[0m' \
+                printf '\033[7m|  %s  | %-*s | %*s | %*s |\033[0m' \
                     "$act_key" "$((_C2 - 2))" "$act_desc" "$_C3" "" "$_C4" ""
             else
-                printf '║  %s  │ %-*s │ %*s │ %*s ║' \
+                printf '|  %s  | %-*s | %*s | %*s |' \
                     "$act_key" "$((_C2 - 2))" "$act_desc" "$_C3" "" "$_C4" ""
             fi
         done
 
         # bottom border
-        _table_border $((sep_y + 3)) 0 "$total_w" "╚" "╩" "╝" "═"
+        _table_border $((sep_y + 3)) 0 "$total_w" "+" "+" "+" "-"
 
-        # footer
         tui_draw_footer
     }
 
     _table_border() {
         local y="$1" x="$2" w="$3" l="$4" m="$5" r="$6" c="$7"
-        local inner=$((_C1 + 2)); local inner2=$((_C1 + _C2 + 4)); local inner3=$((_C1 + _C2 + _C3 + 6))
         tput cup "$y" "$x"
         printf '%s' "$l"
         local i
@@ -228,10 +218,10 @@ attacker_console() {
     }
 
     _draw_target_line() {
-        local ip="${TUI_TARGET_IP}" tp="${TUI_TARGET_TYPE:-Web_Server}" nat="${TUI_TARGET_NAT}"
+        local ip="${TUI_TARGET_IP:-}" tp="${TUI_TARGET_TYPE:-Web_Server}" nat="${TUI_TARGET_NAT:-}"
         local w="$TUI_TERM_W"
         tput cup 2 0
-        printf '  TARGET: %-18s [%s]%*s[%s]' "$ip" "$tp" "$((w - ${#ip} - ${#tp} - ${#nat} - 22))" "" "$nat"
+        printf '\033[7m  TARGET: %-18s [%s]%*s[%s]\033[0m' "$ip" "$tp" "$((w - ${#ip} - ${#tp} - ${#nat} - 22))" "" "$nat"
     }
 
     _run_exploit_with_output() {
