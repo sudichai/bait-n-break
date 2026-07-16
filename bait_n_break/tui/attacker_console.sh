@@ -43,8 +43,10 @@ attacker_console() {
         done
         echo ""
         echo "  Target set: ${TARGET_IP}:${TARGET_PORT:-8080}"
-        sleep 1
     fi
+
+    echo ""
+    read -r -p "  Press any key to enter attack console..." _
 
     # --- TUI Init ---
     # shellcheck source=bait_n_break/tui/ansi_tui.sh
@@ -237,6 +239,7 @@ attacker_console() {
         _load_result_status
         rm -f "$tmpfile"
         TUI_HEADER_STATUS="Connected"
+        clear
         _draw_table
     }
 
