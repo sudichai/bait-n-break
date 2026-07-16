@@ -24,6 +24,7 @@ TUI_TARGET_NAT=""
 TUI_CURSOR_VECTOR=0
 TUI_VECTOR_COUNT=0
 TUI_ACTIVE_VECTOR=""
+TUI_FOOTER_TEXT=""
 
 tui_init() {
     TUI_TERM_W=$(tput cols 2>/dev/null || echo 80)
@@ -74,7 +75,12 @@ tui_draw_target_bar() {
 
 tui_draw_footer() {
     local w="$TUI_TERM_W"
-    local msg="  <H> HOME | <T> TARGETS | <C> RUN CVEs | <A> RUN ALL | <L> LOGS | <Esc> MENU | <Ctrl+C> EXIT"
+    local msg
+    if [ -n "$TUI_FOOTER_TEXT" ]; then
+        msg="$TUI_FOOTER_TEXT"
+    else
+        msg="  <H> HOME | <T> TARGETS | <C> RUN CVEs | <A> RUN ALL | <L> LOGS | <Esc> MENU | <Ctrl+C> EXIT"
+    fi
     local padding=$((w - ${#msg}))
     [ "$padding" -lt 0 ] && msg="${msg:0:$((w-1))}" && padding=0
 
@@ -120,7 +126,6 @@ tui_panel_clear_mid()    { TUI_PANEL_MID=(); }
 tui_panel_clear_right()  { TUI_PANEL_RIGHT=(); }
 
 tui_draw_layout() {
-    clear
     tui_draw_header
     tui_draw_target_bar
 
@@ -149,6 +154,8 @@ tui_read_key() {
         elif [ "$key2" = "[C" ]; then echo "RIGHT"
         elif [ "$key2" = "[D" ]; then echo "LEFT"
         else echo "ESC"; fi
+    elif [ "$key" = $'\n' ] || [ "$key" = "" ]; then
+        echo "ENTER"
     else
         echo "$key"
     fi

@@ -1,20 +1,11 @@
 #!/usr/bin/env bash
 # Victim (Target) role dashboard — persistent ANSI TUI with live-updating
 # service status, vulnerability counts, and incident log.
-# Falls back to whiptail if terminal is too small.
+# Auto-deploys on entry; falls back to whiptail if terminal is too small.
 # Sourced, not executed.
 
 victim_dashboard() {
-    # shellcheck source=bait_n_break/tui/ansi_tui.sh
-    source "${BNB_ROOT}/bait_n_break/tui/ansi_tui.sh"
-
-    if ! tui_init; then
-        source "${BNB_ROOT}/bait_n_break/tui/victim_dashboard_fallback.sh"
-        _victim_dashboard_fallback
-        return
-    fi
-    trap 'tui_cleanup; monitor_stop 2>/dev/null' EXIT INT
-
+    # Source libs needed for deploy before TUI init
     # shellcheck source=bait_n_break/victim/lib_bait.sh
     source "${BNB_ROOT}/bait_n_break/victim/lib_bait.sh"
     # shellcheck source=bait_n_break/victim/lib_webapp.sh
@@ -26,12 +17,73 @@ victim_dashboard() {
     # shellcheck source=bait_n_break/victim/lib_live_dashboard.sh
     source "${BNB_ROOT}/bait_n_break/victim/lib_live_dashboard.sh"
 
+    # --- Auto-Deploy Loading Screen ---
+    clear
+    echo ""
+    echo "=============================================="
+    echo "  bait-n-break Victim Node — Auto-Deploy"
+    echo "=============================================="
+    echo ""
+
+    local deploy_failed=""
+
+    echo -n "  [..] Generating bait files...          "
+    if bait_generate_all >/dev/null 2>&1; then
+        echo -e "\r  [OK] Generating bait files...          "
+    else
+        echo -e "\r  [WARN] Bait generation had errors      "
+    fi
+
+    echo -n "  [..] Starting Docker containers...      "
+    if webapp_up >/dev/null 2>&1; then
+        echo -e "\r  [OK] Starting Docker containers...      "
+    else
+        echo -e "\r  [FAIL] Docker containers failed to start"
+        deploy_failed=1
+    fi
+
+    if [ -z "$deploy_failed" ]; then
+        state_set_status "deployed"
+        echo -n "  [..] Activating monitor...              "
+        monitor_start 2>/dev/null
+        echo -e "\r  [OK] Activating monitor...              "
+    fi
+
+    echo ""
+    if [ -n "$deploy_failed" ]; then
+        echo "=============================================="
+        echo "  DEPLOY FAILED"
+        echo "  Is Docker installed and running?"
+        echo "=============================================="
+        echo ""
+        read -r -p "  [R] Retry  [B] Back to menu: " choice
+        case "$choice" in
+            R|r) exec bash "${BASH_SOURCE[0]}" 2>/dev/null; victim_dashboard; return ;;
+            *) return ;;
+        esac
+    fi
+
+    echo "  All services ready. Starting dashboard..."
+    sleep 2
+
+    # --- TUI Init ---
+    # shellcheck source=bait_n_break/tui/ansi_tui.sh
+    source "${BNB_ROOT}/bait_n_break/tui/ansi_tui.sh"
+
+    if ! tui_init; then
+        source "${BNB_ROOT}/bait_n_break/tui/victim_dashboard_fallback.sh"
+        _victim_dashboard_fallback
+        return
+    fi
+    trap 'tui_cleanup; monitor_stop 2>/dev/null' EXIT INT
+
     TUI_LEFT_TITLE="SERVICES & CONNS"
     TUI_MID_TITLE="VULNERABILITIES"
     TUI_RIGHT_TITLE="INCIDENTS"
     TUI_HEADER_TITLE="HACKER LABS"
     TUI_HEADER_STATUS="Idle"
     TUI_TARGET_TYPE="victim-lab"
+    TUI_FOOTER_TEXT="  <D> DEPLOY | <T> TEARDOWN | <M> MALWARE | <B> BAIT | <Q> BACK"
 
     _build_services_panel() {
         TUI_PANEL_LEFT=()
@@ -157,7 +209,7 @@ victim_dashboard() {
 
         case "$key" in
             D|d)
-                TUI_PANEL_RIGHT=("" "  [*] Deploying services..." "")
+                TUI_PANEL_RIGHT=("" "  [*] Re-deploying services..." "")
                 tui_refresh
                 bait_generate_all 2>/dev/null
                 if webapp_up 2>/dev/null; then
@@ -190,9 +242,6 @@ victim_dashboard() {
                 local bait_list
                 bait_list="$(state_manifest_list 2>/dev/null || echo "No bait files")"
                 _draw_modal "BAIT FILE INVENTORY" "$bait_list"
-                _refresh_all
-                ;;
-            F|f)
                 _refresh_all
                 ;;
             Q|q|"ESC")

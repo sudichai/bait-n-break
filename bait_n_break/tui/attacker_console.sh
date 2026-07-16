@@ -1,9 +1,52 @@
 #!/usr/bin/env bash
 # Attacker console — custom ANSI TUI with persistent 3-panel dashboard.
+# Arrow-key navigation with highlight, IP input modal on entry.
 # Falls back to whiptail/dialog if terminal is too small.
 # Sourced, not executed.
 
 attacker_console() {
+    # shellcheck source=bait_n_break/attacker/lib_target.sh
+    source "${BNB_ROOT}/bait_n_break/attacker/lib_target.sh"
+
+    # --- IP Target Input (before TUI) ---
+    if [ -z "${TARGET_IP:-}" ]; then
+        local saved
+        saved="$(state_get_target 2>/dev/null)"
+        if [ -n "$saved" ]; then
+            TARGET_IP="$(echo "$saved" | cut -d' ' -f1)"
+            TARGET_PORT="$(echo "$saved" | cut -d' ' -f2)"
+        fi
+    fi
+
+    if [ -z "${TARGET_IP:-}" ]; then
+        clear
+        echo ""
+        echo "  +-------------------------------------------+"
+        echo "  |         bait-n-break Attacker Console      |"
+        echo "  +-------------------------------------------+"
+        echo ""
+        echo "  No target configured."
+        echo ""
+        local target_ip
+        while true; do
+            printf "  Enter Target IP: "
+            read -r target_ip
+            if target_is_valid_ip "$target_ip"; then
+                TARGET_IP="$target_ip"
+                TARGET_PORT="${TARGET_PORT:-8080}"
+                state_set_target "$TARGET_IP" "${TARGET_PORT:-8080}"
+                break
+            else
+                echo "  Invalid IPv4 address. Try again."
+                echo ""
+            fi
+        done
+        echo ""
+        echo "  Target set: ${TARGET_IP}:${TARGET_PORT:-8080}"
+        sleep 1
+    fi
+
+    # --- TUI Init ---
     # shellcheck source=bait_n_break/tui/ansi_tui.sh
     source "${BNB_ROOT}/bait_n_break/tui/ansi_tui.sh"
 
@@ -14,8 +57,6 @@ attacker_console() {
     fi
     trap 'tui_cleanup' EXIT INT
 
-    # shellcheck source=bait_n_break/attacker/lib_target.sh
-    source "${BNB_ROOT}/bait_n_break/attacker/lib_target.sh"
     # shellcheck source=bait_n_break/attacker/lib_recon.sh
     source "${BNB_ROOT}/bait_n_break/attacker/lib_recon.sh"
     # shellcheck source=bait_n_break/attacker/lib_bruteforce.sh
@@ -32,6 +73,13 @@ attacker_console() {
     source "${BNB_ROOT}/bait_n_break/attacker/lib_malware_c2.sh"
     # shellcheck source=bait_n_break/attacker/lib_results.sh
     source "${BNB_ROOT}/bait_n_break/attacker/lib_results.sh"
+
+    TUI_LEFT_TITLE="ATTACK VECTORS"
+    TUI_MID_TITLE="VULNERABILITIES FOUND"
+    TUI_RIGHT_TITLE="EXECUTE / LOGS"
+    TUI_HEADER_TITLE="HACKER LABS"
+    TUI_FOOTER_TEXT="  <H> HOME | <T> TARGET | <A> RUN ALL | <C> RUN CVEs | <L> LOGS | <Q> BACK"
+    TUI_CURSOR_VECTOR=0
 
     _load_target_state() {
         if [ -f "${BNB_TARGET_FILE}" ]; then
@@ -51,31 +99,54 @@ attacker_console() {
     _build_vector_menu() {
         TUI_PANEL_LEFT=()
         local vectors=(
-            "[1] Reconnaissance"
-            "[2] Brute Force (SSH/FTP/HTTP)"
-            "[3] SQL Injection"
-            "[4] Command Injection"
-            "[5] Webshell Deploy"
-            "[6] XSS PoC"
-            "[7] CVE-2021-41773 Apache Path Traversal"
-            "[8] CVE-2014-6271 Shellshock"
-            "[9] CVE-2015-3306 ProFTPD RCE"
-            "[10] CVE-2019-15107 Webmin RCE"
-            "[11] CVE-2020-1938 Tomcat Ghostcat"
-            "[12] Log4Shell Pattern JNDI"
-            "[13] Spring4Shell Pattern Binding"
-            "[14] Struts2 Pattern Upload"
-            "[15] CVE-2021-4034 Polkit LPE"
-            "[16] Crawler / Bait Exfiltration"
-            "[17] Post-Exploitation"
-            "[18] Malware / C2 Simulation"
+            "Reconnaissance"
+            "Brute Force (SSH/FTP/HTTP)"
+            "SQL Injection"
+            "Command Injection"
+            "Webshell Deploy"
+            "XSS PoC"
+            "CVE-2021-41773 Apache Path Traversal"
+            "CVE-2014-6271 Shellshock"
+            "CVE-2015-3306 ProFTPD RCE"
+            "CVE-2019-15107 Webmin RCE"
+            "CVE-2020-1938 Tomcat Ghostcat"
+            "Log4Shell Pattern JNDI"
+            "Spring4Shell Pattern Binding"
+            "Struts2 Pattern Upload"
+            "CVE-2021-4034 Polkit LPE"
+            "Crawler / Bait Exfiltration"
+            "Post-Exploitation"
+            "Malware / C2 Simulation"
+            "---"
             "[A] Run All Scenarios"
             "[C] Run All CVEs"
             "[H] Back to Main Menu"
         )
+        local i=0
         for v in "${vectors[@]}"; do
-            TUI_PANEL_LEFT+=("$v")
+            local label
+            if [ "$v" = "---" ]; then
+                label="  ------------------------"
+            elif [ "$i" -lt 9 ]; then
+                label="  [$(($i + 1))] ${v}"
+            else
+                label="  ${v}"
+            fi
+            TUI_PANEL_LEFT+=("$label")
+            i=$((i + 1))
         done
+        TUI_VECTOR_COUNT=18
+    }
+
+    _highlight_current_vector() {
+        if [ "$TUI_CURSOR_VECTOR" -ge 0 ] 2>/dev/null && [ "$TUI_CURSOR_VECTOR" -lt 18 ] 2>/dev/null; then
+            local panel_w=$(( (TUI_TERM_W - 2) / 3 ))
+            local x=1
+            local y=$(( 3 + TUI_CURSOR_VECTOR ))
+            local line="${TUI_PANEL_LEFT[$TUI_CURSOR_VECTOR]:-}"
+            tput cup "$y" "$x"
+            printf '\033[7m %-*s \033[0m' "$((panel_w - 2))" "${line:0:$((panel_w - 2))}"
+        fi
     }
 
     _run_exploit_with_output() {
@@ -92,7 +163,12 @@ attacker_console() {
             if [ "${#TUI_PANEL_RIGHT[@]}" -gt "$((TUI_TERM_H - 6))" ]; then
                 TUI_PANEL_RIGHT=("${TUI_PANEL_RIGHT[@]: -$((TUI_TERM_H - 6))}")
             fi
-            tui_refresh
+            tui_draw_header
+            tui_draw_target_bar
+            tui_draw_panel 0 2 "$(( (TUI_TERM_W - 2) / 3 ))" "$(( TUI_TERM_H - 4 ))" "$TUI_LEFT_TITLE" TUI_PANEL_LEFT
+            tui_draw_panel "$(( (TUI_TERM_W - 2) / 3 + 1 ))" 2 "$(( (TUI_TERM_W - 2) / 3 ))" "$(( TUI_TERM_H - 4 ))" "$TUI_MID_TITLE" TUI_PANEL_MID
+            tui_draw_panel "$(( 2 * (TUI_TERM_W - 2) / 3 + 2 ))" 2 "$(( (TUI_TERM_W - 2) / 3 ))" "$(( TUI_TERM_H - 4 ))" "$TUI_RIGHT_TITLE" TUI_PANEL_RIGHT
+            tui_draw_footer
         done < <("$@" 2>&1)
 
         _refresh_results_panel
@@ -199,22 +275,57 @@ attacker_console() {
     _build_vector_menu
     _refresh_results_panel
     tui_refresh
+    _highlight_current_vector
 
     while [ "$TUI_RUNNING" -eq 1 ]; do
         local key
         key="$(tui_read_key)" || { sleep 0.05; continue; }
 
         case "$key" in
-            [1-9]|0)
-                local num="$key"
-                if [ "$num" -ge 1 ] 2>/dev/null && [ "$num" -le 18 ] 2>/dev/null; then
-                    _execute_vector "$num"
+            UP)
+                if [ "$TUI_CURSOR_VECTOR" -gt 0 ]; then
+                    TUI_CURSOR_VECTOR=$((TUI_CURSOR_VECTOR - 1))
                     tui_refresh
+                    _highlight_current_vector
                 fi
                 ;;
-            A|a|C|c)
-                _execute_vector "$key"
+            DOWN)
+                if [ "$TUI_CURSOR_VECTOR" -lt 17 ]; then
+                    TUI_CURSOR_VECTOR=$((TUI_CURSOR_VECTOR + 1))
+                    tui_refresh
+                    _highlight_current_vector
+                fi
+                ;;
+            "ENTER"|"")
+                local sel=$((TUI_CURSOR_VECTOR + 1))
+                _execute_vector "$sel"
+                _build_vector_menu
                 tui_refresh
+                _highlight_current_vector
+                ;;
+            [1-9])
+                local num="$key"
+                if [ "$num" -ge 1 ] 2>/dev/null && [ "$num" -le 9 ] 2>/dev/null; then
+                    TUI_CURSOR_VECTOR=$((num - 1))
+                    _execute_vector "$num"
+                    _build_vector_menu
+                    tui_refresh
+                    _highlight_current_vector
+                fi
+                ;;
+            A|a)
+                TUI_CURSOR_VECTOR=18
+                _execute_vector "A"
+                _build_vector_menu
+                tui_refresh
+                _highlight_current_vector
+                ;;
+            C|c)
+                TUI_CURSOR_VECTOR=19
+                _execute_vector "C"
+                _build_vector_menu
+                tui_refresh
+                _highlight_current_vector
                 ;;
             T|t)
                 tui_cleanup
@@ -222,6 +333,7 @@ attacker_console() {
                 tui_init || return
                 _load_target_state
                 tui_refresh
+                _highlight_current_vector
                 ;;
             L|l)
                 tui_cleanup
@@ -233,6 +345,7 @@ attacker_console() {
                 fi
                 tui_init || return
                 tui_refresh
+                _highlight_current_vector
                 ;;
             H|h|"ESC")
                 tui_cleanup
