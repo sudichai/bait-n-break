@@ -35,15 +35,13 @@ victim_dashboard() {
     fi
 
     echo -n "  [..] Starting Docker containers...      "
-    docker ps >/dev/null 2>&1 || {
-        echo -e "\r  [..] Docker daemon not running, attempting start..."
-        sudo systemctl start docker 2>/dev/null || sudo service docker start 2>/dev/null || true
-        sleep 2
-    }
     if webapp_up >/dev/null 2>&1; then
         echo -e "\r  [OK] Starting Docker containers...      "
     else
         echo -e "\r  [FAIL] Docker containers failed to start"
+        echo ""
+        echo "  Error details:"
+        webapp_up 2>&1 | tail -5 | while IFS= read -r l; do echo "    $l"; done
         deploy_failed=1
     fi
 
@@ -73,12 +71,6 @@ victim_dashboard() {
             case "$choice" in
                 R|r)
                     echo ""
-                    echo -n "  [..] Trying Docker..."
-                    docker ps >/dev/null 2>&1 || {
-                        sudo systemctl start docker 2>/dev/null
-                        sudo service docker start 2>/dev/null
-                        sleep 3
-                    }
                     echo -n "  [..] Starting containers...              "
                     if webapp_up >/dev/null 2>&1; then
                         echo -e "\r  [OK] Starting Docker containers...      "
