@@ -27,6 +27,10 @@ victim_dashboard() {
 
     local deploy_failed=""
 
+    echo -n "  [..] Stopping any existing containers... "
+    webapp_down >/dev/null 2>&1
+    echo -e "\r  [OK] Stopping any existing containers... "
+
     echo -n "  [..] Generating bait files...          "
     if bait_generate_all >/dev/null 2>&1; then
         echo -e "\r  [OK] Generating bait files...          "
@@ -71,6 +75,9 @@ victim_dashboard() {
             case "$choice" in
                 R|r)
                     echo ""
+                    echo -n "  [..] Stopping existing containers...    "
+                    webapp_down >/dev/null 2>&1
+                    echo -e "\r  [OK] Stopping existing containers...    "
                     echo -n "  [..] Starting containers...              "
                     if webapp_up >/dev/null 2>&1; then
                         echo -e "\r  [OK] Starting Docker containers...      "
