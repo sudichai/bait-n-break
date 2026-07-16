@@ -38,17 +38,13 @@ victim_dashboard() {
         echo -e "\r  [WARN] Bait generation had errors      "
     fi
 
-    echo -n "  [..] Starting Docker containers...      "
-    local deploy_out
-    deploy_out="$(webapp_up 2>&1)"
-    if [ $? -eq 0 ]; then
-        echo -e "\r  [OK] Starting Docker containers...      "
+    echo "  [..] Starting Docker containers..."
+    if webapp_up 2>&1; then
+        echo ""
+        echo "  [OK] Docker containers started"
     else
-        echo -e "\r  [FAIL] Docker containers failed to start"
         echo ""
-        echo "  Error details:"
-        echo "$deploy_out" | tail -5 | while IFS= read -r l; do echo "    $l"; done
-        echo ""
+        echo "  [FAIL] Docker containers failed to start"
         deploy_failed=1
     fi
 
@@ -73,16 +69,18 @@ victim_dashboard() {
                     echo -n "  [..] Stopping existing containers...    "
                     webapp_down >/dev/null 2>&1
                     echo -e "\r  [OK] Stopping existing containers...    "
-                    echo -n "  [..] Starting containers...              "
-                    if webapp_up >/dev/null 2>&1; then
-                        echo -e "\r  [OK] Starting Docker containers...      "
+                    echo "  [..] Starting containers..."
+                    if webapp_up 2>&1; then
+                        echo ""
+                        echo "  [OK] Docker containers started"
                         state_set_status "deployed"
                         echo -n "  [..] Activating monitor...              "
                         monitor_start 2>/dev/null
                         echo -e "\r  [OK] Activating monitor...              "
                         break
                     else
-                        echo -e "\r  [FAIL] Docker containers failed to start"
+                        echo ""
+                        echo "  [FAIL] Docker containers failed to start"
                     fi
                     ;;
                 *) return ;;
@@ -239,7 +237,7 @@ victim_dashboard() {
                 TUI_PANEL_RIGHT=("" "  [*] Re-deploying services..." "")
                 tui_refresh
                 bait_generate_all 2>/dev/null
-                if webapp_up 2>/dev/null; then
+                if webapp_up >/dev/null 2>&1; then
                     state_set_status "deployed"
                     monitor_start
                     TUI_PANEL_RIGHT=("" "  [OK] Services deployed." "")
