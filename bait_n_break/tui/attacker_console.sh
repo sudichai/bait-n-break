@@ -66,6 +66,15 @@ attacker_console() {
     source "${BNB_ROOT}/bait_n_break/attacker/lib_malware_c2.sh"
     source "${BNB_ROOT}/bait_n_break/attacker/lib_results.sh"
 
+    crawl_all() { crawl_leaked_files 2>/dev/null; }
+    malware_c2_all() { c2_beacon_check 2>/dev/null; ransomware_trigger 2>/dev/null; }
+    post_exploit_all() {
+        exploit_lfi 2>/dev/null; exploit_ssrf 2>/dev/null; exploit_xxe 2>/dev/null
+        exploit_idor 2>/dev/null; exploit_pickle_deser 2>/dev/null; exploit_docker_escape 2>/dev/null
+        exploit_persist_ssh 2>/dev/null; exploit_persist_cron 2>/dev/null
+        exploit_cred_harvest 2>/dev/null; exploit_dns_exfil 2>/dev/null
+    }
+
     TUI_HEADER_TITLE="bait-n-break"
     TUI_CURSOR_VECTOR=0
 
