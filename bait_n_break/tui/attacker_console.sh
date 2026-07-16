@@ -63,7 +63,7 @@ attacker_console() {
     source "${BNB_ROOT}/bait_n_break/attacker/lib_cve_exploits.sh" 2>/dev/null
     source "${BNB_ROOT}/bait_n_break/attacker/lib_crawler.sh"
     source "${BNB_ROOT}/bait_n_break/attacker/lib_post_exploit.sh"
-    source "${BNB_ROOT}/bait_n_break/attacker/lib_malware__C2.sh"
+    source "${BNB_ROOT}/bait_n_break/attacker/lib_malware_c2.sh"
     source "${BNB_ROOT}/bait_n_break/attacker/lib_results.sh"
 
     TUI_HEADER_TITLE="bait-n-break"
@@ -137,10 +137,9 @@ attacker_console() {
         local h="$TUI_TERM_H"
         local sel="$TUI_CURSOR_VECTOR"
 
-        tui_draw_header "" "$TUI_HEADER_STATUS"
         _draw_target_line
 
-        local table_y=3
+        local table_y=2
         local total_w=$((_C1 + _C2 + _C3 + _C4 + 5))
 
         # top border
@@ -172,33 +171,6 @@ attacker_console() {
             fi
         done
 
-        # separator before actions
-        local sep_y=$((table_y + 3 + VEC_COUNT))
-        _table_border "$sep_y" 0 "$total_w" "+" "+" "+" "-"
-
-        # action rows
-        local actions=(
-            "A|Run All Scenarios (kill-chain)"
-            "C|Run All CVEs"
-        )
-        local ai
-        for ((ai = 0; ai < 2; ai++)); do
-            local act_line="${actions[$ai]}"
-            local act_key="${act_line%%|*}"; local act_desc="${act_line##*|}"
-            local act_y=$((sep_y + 1 + ai))
-            tput cup "$act_y" 0
-            if [ "$((VEC_COUNT + ai))" = "$sel" ]; then
-                printf '\033[7m|  %s  | %-*s | %*s | %*s |\033[0m' \
-                    "$act_key" "$((_C2 - 2))" "$act_desc" "$_C3" "" "$_C4" ""
-            else
-                printf '|  %s  | %-*s | %*s | %*s |' \
-                    "$act_key" "$((_C2 - 2))" "$act_desc" "$_C3" "" "$_C4" ""
-            fi
-        done
-
-        # bottom border
-        _table_border $((sep_y + 3)) 0 "$total_w" "+" "+" "+" "-"
-
         tui_draw_footer
     }
 
@@ -220,8 +192,10 @@ attacker_console() {
     _draw_target_line() {
         local ip="${TUI_TARGET_IP:-}" tp="${TUI_TARGET_TYPE:-Web_Server}" nat="${TUI_TARGET_NAT:-}"
         local w="$TUI_TERM_W"
-        tput cup 2 0
-        printf '\033[7m  TARGET: %-18s [%s]%*s[%s]\033[0m' "$ip" "$tp" "$((w - ${#ip} - ${#tp} - ${#nat} - 22))" "" "$nat"
+        local status="${TUI_HEADER_STATUS}"
+        local label="[bait-n-break]"
+        tput cup 0 0
+        printf '\033[7m  %s   TARGET: %-15s [%s]%*s[%s]\033[0m' "$label" "$ip" "$tp" "$((w - ${#label} - ${#ip} - ${#tp} - ${#status} - 30))" "" "$status"
     }
 
     _run_exploit_with_output() {
@@ -293,7 +267,7 @@ attacker_console() {
             15) _run_exploit_with_output "Polkit LPE" exploit_polkit_4034 2>/dev/null || true ;;
             16) _run_exploit_with_output "Crawler" crawl_all 2>/dev/null || true ;;
             17) _run_exploit_with_output "Post-Exploit" post_exploit_all 2>/dev/null || true ;;
-            18) _run_exploit_with_output "Malware/C2" malware__C2_all 2>/dev/null || true ;;
+            18) _run_exploit_with_output "Malware/C2" malware_c2_all 2>/dev/null || true ;;
             A|a)
                 _run_exploit_with_output "Reconnaissance" recon_scan
                 exploit_ghostcat_1938 >/dev/null 2>&1 || true
@@ -314,7 +288,7 @@ attacker_console() {
                 exploit_polkit_4034 >/dev/null 2>&1 || true
                 crawl_all >/dev/null 2>&1 || true
                 post_exploit_all >/dev/null 2>&1 || true
-                malware__C2_all >/dev/null 2>&1 || true
+                malware_c2_all >/dev/null 2>&1 || true
                 _refresh_results_panel
                 _load_result_status
                 TUI_HEADER_STATUS="Connected"
@@ -369,7 +343,7 @@ attacker_console() {
                 fi
                 ;;
             DOWN)
-                if [ "$TUI_CURSOR_VECTOR" -lt "$((VEC_COUNT + 1))" ]; then
+                if [ "$TUI_CURSOR_VECTOR" -lt "$((VEC_COUNT - 1))" ]; then
                     TUI_CURSOR_VECTOR=$((TUI_CURSOR_VECTOR + 1))
                     _draw_table
                 fi
@@ -378,10 +352,6 @@ attacker_console() {
                 if [ "$TUI_CURSOR_VECTOR" -lt "$VEC_COUNT" ]; then
                     local sel=$((TUI_CURSOR_VECTOR + 1))
                     _execute_vector "$sel"
-                elif [ "$TUI_CURSOR_VECTOR" = "$VEC_COUNT" ]; then
-                    _execute_vector "A"
-                elif [ "$TUI_CURSOR_VECTOR" = "$((VEC_COUNT + 1))" ]; then
-                    _execute_vector "C"
                 fi
                 ;;
             [1-9])
@@ -393,11 +363,9 @@ attacker_console() {
                 fi
                 ;;
             A|a)
-                TUI_CURSOR_VECTOR="$VEC_COUNT"
                 _execute_vector "A"
                 ;;
             C|c)
-                TUI_CURSOR_VECTOR="$((VEC_COUNT + 1))"
                 _execute_vector "C"
                 ;;
             T|t)
