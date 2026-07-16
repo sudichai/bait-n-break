@@ -1,203 +1,285 @@
-# bait-n-break
+# 🔐 bait-n-break
 
-> **Self-contained cybersecurity training lab** -- deploy intentionally vulnerable services + real CVE services, then attack them through a custom ANSI TUI. Built with pure Bash. Runs on stock Ubuntu and Kali.
+> **Self-contained cybersecurity training lab** — deploy intentionally vulnerable services + real CVE services, then attack them through a custom ANSI TUI. Built with pure Bash. Runs on stock Ubuntu and Kali.
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
 ```bash
 git clone https://github.com/sudichai/bait-n-break.git && cd bait-n-break && bash setup.sh && bash run.sh
 ```
 
-> Do **not** use `sudo` with `git clone` -- it will break permissions. `setup.sh` handles everything automatically including dpkg lock conflicts.
-
 ```
-+-----------------------------+
-|        bait-n-break         |
-|                             |
-|  [1] Victim (Target)        |
-|  [2] Attacker (Kali)        |
-|  [3] Exit                   |
-+-----------------------------+
+┌─────────────────────────────┐
+│        bait-n-break         │
+│                             │
+│  [1] Victim (Target)        │
+│  [2] Attacker (Kali)        │
+│  [3] Exit                   │
+└─────────────────────────────┘
 ```
 
 ---
 
-## What's Inside
+## 🎯 What's Inside
 
-### Victim (Target) Node
-
-| Component | Details |
-|-----------|---------|
-| **Vulnerable Web App** | Flask app with **54+ endpoints** exposing **68+ vulnerability classes** |
-| **MySQL Database** | Port `3306`, weak credentials (`root:root`, `webapp:webapp123`) |
-| **SSH Decoy** | Port `2222`, credentials `admin:admin123`, sudo access |
-| **FTP Decoy** | Port `2121`, credentials `admin:admin123` |
-| **6 Real CVE Services** | Dockerized vulnerable services with published exploits (see CVE table below) |
-| **Bait Files** | 31 decoy files -- cloud creds, SSH keys, CI/CD secrets, browser profiles, VPN configs, password lists, source code, logs |
-| **Live ANSI Dashboard** | Persistent 3-panel TUI: services + TCP connections, kill-chain vuln counts, real-time incident log (auto-refresh 2s) |
-| **Live Monitor** | Tails webapp logs + auth.log + bait file access in real-time |
-| **Malware Sim** | EICAR test file, sandboxed ransomware demo, C2 beacon check |
-
-### Real CVE Services
-
-| CVE | Service | Port | Vulnerability Class | Kill Chain |
-|-----|---------|------|-------------------|------------|
-| CVE-2021-41773 | Apache HTTPD 2.4.49 | `8081` | Path Traversal -> RCE via CGI | Initial Access |
-| CVE-2014-6271 | Shellshock (Bash CGI) | `8082` | Env Injection -> RCE | Initial Access |
-| CVE-2015-3306 | ProFTPD 1.3.5 mod_copy | `2122` | Unauthenticated File Copy -> RCE | Initial Access |
-| CVE-2019-15107 | Webmin <=1.920 | `10000` | Auth Bypass -> Command Injection | Initial Access |
-| CVE-2020-1938 | Tomcat Ghostcat (AJP) | `8083`/`8009` | AJP File Read -> RCE | Recon / Initial Access |
-| CVE-2021-4034 | Polkit pkexec LPE | *(inside container)* | Argument Injection -> Root Shell | Privilege Escalation |
-
-### Flask CVE-Patterned Endpoints
-
-| Pattern | Endpoint | CVE Mimicked |
-|---------|----------|-------------|
-| Log4Shell-style JNDI Injection | `/api/log` | CVE-2021-44228 |
-| Spring4Shell-style Param Binding | `/api/server/config` | CVE-2022-22965 |
-| Struts2-style Path Traversal Upload | `/api/upload-archive` | CVE-2023-50164 |
-
-### Vulnerabilities (Kill-Chain Mapped) -- 68+
-
-| Phase | Vulnerabilities |
-|-------|----------------|
-| **Recon** | `/admin`, `/env`, `/debug`, `/robots.txt`, `/files/<area>/`, DNS info, Docker exposes ports 2222/2121/3306 |
-| **Initial Access** | SQLi `/login`, Unrestricted upload `/upload`, Weak SSH (2222), Weak FTP (2121), Weak MySQL (3306), **CVE-2021-41773 Apache RCE**, **CVE-2014-6271 Shellshock**, **CVE-2015-3306 ProFTPD RCE**, **CVE-2019-15107 Webmin RCE**, **CVE-2020-1938 Tomcat Ghostcat**, **Log4Shell pattern JNDI**, **Spring4Shell pattern binding**, **Struts2 pattern upload** |
-| **Execution** | CMDi `/ping`, LFI `/read`, SSRF `/fetch`, XXE `/parse`, Pickle deser `/pickle`, Open Redirect `/redirect`, Arbitrary file download `/download` |
-| **Privilege Escalation** | SUID `find/awk/curl`, Sudo misconfig (`victim` NOPASSWD), Docker socket mounted (`/var/run/docker.sock`), **CVE-2021-4034 Polkit pkexec LPE** |
-| **Persistence** | SSH key injection `/persist/ssh-key`, Cron backdoor `/persist/cron` |
-| **Credential Access** | IDOR `/users/<id>` (SSN, role, password), LFI `/etc/passwd` + `/etc/shadow`, `/env` leak, JWT none-algorithm `/api/auth` |
-| **Collection** | Bait files via `/files/<area>/<path>`, Reflected XSS `/search`, Stored XSS `/comments` |
-| **Web App Vulns** | CSRF `/admin/transfer` + `/admin/password`, Mass Assignment `/api/profile/update`, Race Condition `/api/coupon/apply`, Weak Crypto `/reset` (predictable token), Session Fixation `/login?sid=`, HTTP Param Pollution `/api/search`, CORS wildcard `*`, Missing security headers, No rate limiting |
-| **Exfiltration** | DNS tunneling `/exfil/dns`, HTTP exfil `/exfil/http` |
-| **C2** | Beacon `/c2/beacon` with remote command execution |
-| **Impact** | Ransomware demo `/admin/ransomware-demo`, Defacement `/admin/deface`, DB wipe `/admin/wipe-db`, Log clearing `/admin/clear-logs` |
-
-### Attacker (Kali) Scenarios -- 25 modules + 3 chains
-
-**Custom ANSI TUI**: persistent 3-panel dashboard (Attack Vectors | Vulnerabilities Found | Execute/Logs) with keyboard shortcuts and real-time streaming output. Falls back to whiptail/dialog on small terminals.
-
-| Module | Kill-Chain Phase | OPSEC | Method |
-|--------|-----------------|-------|--------|
-| Recon scan | Recon | quiet | `nmap` top 1000 ports + service detection |
-| SSH brute-force | Credential Access | loud | `hydra` / `sshpass` (15 credentials) |
-| FTP brute-force | Credential Access | loud | `hydra` / `curl` (15 credentials) |
-| HTTP brute-force | Credential Access | loud | `curl` POST (15 credentials) |
-| MySQL brute-force | Credential Access | loud | `mysql` client |
-| SQL injection | Execution | quiet | `sqlmap` + hand-rolled payloads (4 variants) |
-| Command injection | Execution | loud | `curl` (5 payload variants) |
-| Webshell deploy | Execution | loud | Upload + execute |
-| LFI | Execution | loud | Path traversal (8 file targets) |
-| SSRF | Execution | quiet | Internal endpoint enumeration |
-| XXE | Execution | quiet | XML external entity (3 file targets) |
-| IDOR | Credential Access | quiet | User enumeration (7 IDs) |
-| Pickle deser | Execution | loud | Base64 pickle RCE |
-| Credential harvest | Credential Access | quiet | Env dump + LFI + SSH key grab |
-| Docker escape | Priv Esc | loud | Docker socket via `/docker` |
-| Persistence (SSH/cron) | Persistence | loud | Key injection + cron backdoor |
-| Crawler | Collection | quiet | 50-path wordlist with delay |
-| C2 beacon | C2 | quiet | `curl` (3 attempts) |
-| Ransomware trigger | Impact | loud | `POST /admin/ransomware-demo` |
-| DNS exfiltration | Exfiltration | quiet | DNS tunneling |
-| Defacement | Impact | loud | `POST /admin/deface` |
-| DB wipe | Impact | loud | `POST /admin/wipe-db` |
-| Log clearing | Impact | loud | `POST /admin/clear-logs` |
-| **CVE-2021-41773 Apache RCE** | Initial Access | loud | Path traversal + CGI execution |
-| **CVE-2014-6271 Shellshock** | Initial Access | loud | User-Agent header injection |
-| **CVE-2015-3306 ProFTPD RCE** | Initial Access | quiet | SITE CPFR/CPTO file copy |
-| **CVE-2019-15107 Webmin RCE** | Initial Access | medium | password_change.cgi injection |
-| **CVE-2020-1938 Tomcat Ghostcat** | Recon / Init Access | medium | AJP binary packet (inline Python) |
-| **Log4Shell Pattern JNDI** | Execution | medium | `${jndi:ldap://...}` resolution |
-| **Spring4Shell Pattern** | Init Access | medium | Nested parameter binding -> file write |
-| **Struts2 Pattern Upload** | Init Access | loud | `../` path traversal upload -> RCE |
-| **CVE-2021-4034 Polkit LPE** | Priv Esc | quiet | pkexec argument injection -> root |
-
-**Multi-Stage Attack Chains:**
-| Chain | Path | Phases |
-|-------|------|--------|
-| **Chain A** | SQLi -> Cred Dump -> SSH -> Docker Escape | 6 stages, data flows between each |
-| **Chain B** | CMDi -> Webshell -> Persistence -> Impact | 4 stages |
-| **Chain C** | SSRF -> Internal Enum -> LFI -> DNS Exfil | 4 stages |
-
-**Full Kill-Chain:** `Run All Scenarios` runs 8 phases: Recon -> CVE Initial Access -> Web Exploitation -> Brute Force -> CVE Privilege Escalation -> Post-Exploit -> Exfil -> Impact. `Run All CVEs` (hotkey `C`) chains all 9 CVE exploits in kill-chain order.
+```
+┌──────────────────────────────────────────────────────────┐
+│                    bait-n-break Lab                       │
+│                                                          │
+│  ┌───────────────────┐    ┌───────────────────────────┐  │
+│  │  VICTIM (Target)  │    │   ATTACKER (Kali)         │  │
+│  │                   │    │                           │  │
+│  │  🐍 Flask Web App │    │  🖥️  ANSI TUI Dashboard   │  │
+│  │  🛢️  MySQL 5.7    │    │  🔍 Recon (nmap)          │  │
+│  │  🔓 SSH Decoy     │───▶│  💥 25 Attack Modules     │  │
+│  │  🔓 FTP Decoy     │    │  🧬 9 CVE Exploits        │  │
+│  │  🐳 6 CVE Services│    │  🔗 3 Attack Chains       │  │
+│  │  🍯 31 Bait Files │    │  📊 Results + Scoring     │  │
+│  │  📡 Live Monitor  │    │                           │  │
+│  └───────────────────┘    └───────────────────────────┘  │
+└──────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Project Structure
+### 🎯 Victim (Target) Node
+
+| 🧩 Component | 📋 Details |
+|:-------------|:-----------|
+| 🐍 **Flask Web App** | **54+ endpoints** exposing **68+ vuln classes** |
+| 🛢️ **MySQL Database** | Port `3306` · `root:root` / `webapp:webapp123` |
+| 🔓 **SSH Decoy** | Port `2222` · `admin:admin123` · sudo access |
+| 🔓 **FTP Decoy** | Port `2121` · `admin:admin123` |
+| 🐳 **6 Real CVE Services** | Dockerized with published exploits → see table below |
+| 🍯 **Bait Files** | **31 decoy files** · cloud creds · SSH keys · CI/CD secrets · VPN configs · DB dumps |
+| 🖥️ **Live ANSI Dashboard** | 3-panel TUI: services + connections · vuln counts · incidents (refresh 2s) |
+| 📡 **Live Monitor** | Real-time webapp + auth + bait file access log tailing |
+| 💣 **Malware Sim** | EICAR test file · sandboxed ransomware demo · C2 beacon |
+
+---
+
+### 🐳 Real CVE Services (Dockerized)
+
+| 🔖 CVE | 🏷️ Service | 🔌 Port | 🧬 Class | ⛓️ Kill Chain |
+|:-------|:-----------|:-------|:---------|:-------------|
+| **CVE-2021-41773** | Apache HTTPD 2.4.49 | `8081` | Path Traversal → RCE via CGI | Initial Access |
+| **CVE-2014-6271** | Shellshock (Bash CGI) | `8082` | Env Injection → RCE | Initial Access |
+| **CVE-2015-3306** | ProFTPD 1.3.5 mod_copy | `2122` | Unauth File Copy → RCE | Initial Access |
+| **CVE-2019-15107** | Webmin ≤1.920 | `10000` | Auth Bypass → CMDi | Initial Access |
+| **CVE-2020-1938** | Tomcat Ghostcat (AJP) | `8083`/`8009` | AJP LFI → RCE | Recon / Initial Access |
+| **CVE-2021-4034** | Polkit pkexec LPE | `(local)` | Arg Injection → Root | Priv Escalation |
+
+---
+
+### 🧪 Flask CVE-Patterned Endpoints
+
+| 🎭 Pattern | 🔗 Endpoint | 🎯 CVE Mimicked |
+|:-----------|:-----------|:---------------|
+| Log4Shell JNDI Injection | `/api/log` | CVE-2021-44228 |
+| Spring4Shell Param Binding | `/api/server/config` | CVE-2022-22965 |
+| Struts2 Path Traversal Upload | `/api/upload-archive` | CVE-2023-50164 |
+
+---
+
+### 🧬 Vulnerabilities — Kill-Chain Mapped (68+)
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│  KILL CHAIN MAP                                                            │
+│                                                                            │
+│  🔍 RECON (5)   ▸  🔑 INIT ACCESS (14)  ▸  ⚡ EXECUTION (8)               │
+│  /admin               SQLi /login             CMDi /ping                   │
+│  /env                 Upload /upload          LFI /read                    │
+│  /debug               SSH :2222               SSRF /fetch                  │
+│  /robots.txt          FTP :2121               XXE /parse                   │
+│  /files/<area>/       MySQL :3306             Pickle deser /pickle         │
+│                       6x CVE Services         Open Redirect /redirect      │
+│                       3x Flask CVE patterns   File Download /download      │
+│                                                                            │
+│  👑 PRIV ESC (4)   ▸  📌 PERSIST (2)      ▸  🔐 CRED ACCESS (5)           │
+│  SUID find/awk/curl    SSH key /persist       IDOR /users/<id>             │
+│  Sudo misconfig        Cron /persist          LFI /etc/passwd+shadow       │
+│  Docker socket                               JWT none-alg /api/auth        │
+│  CVE-2021-4034 Polkit                         /env leak                    │
+│                                                                            │
+│  📂 COLLECT (6)    ▸  🕸️ WEB VULNS (9)    ▸  📤 EXFIL (2)                │
+│  Bait files           CSRF 2x                 DNS tunnel /exfil/dns        │
+│  Reflected XSS        Mass Assignment          HTTP exfil /exfil/http       │
+│  Stored XSS           Race Condition                                       │
+│                        Weak Crypto            🦠 C2 (1)  🔥 IMPACT (5)     │
+│                        Session Fixation        /c2/beacon  Ransomware      │
+│                        Param Pollution                     Defacement      │
+│                        CORS wildcard                       DB Wipe         │
+│                        Missing headers                     Log Clear       │
+│                        No rate limit                                       │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 💥 Attacker (Kali) — 25 Modules + 3 Chains
+
+**🖥️ Custom ANSI TUI**: persistent 3-panel dashboard with live streaming output and keyboard shortcuts.
+
+```
+┌──────────────────┬──────────────────┬──────────────────┐
+│ ATTACK VECTORS   │ VULNS FOUND      │ EXECUTE / LOGS   │
+│                  │                  │                  │
+│ [1] Recon        │ > CVE-2021-41773 │ Executing...     │
+│ [2] Brute Force  │ > Shellshock     │ Payload sent...  │
+│ [3] SQLi         │ > Webmin RCE     │ Result: SUCCESS  │
+│ [4] CMDi         │ > SQLi bypass    │                  │
+│ [5] Webshell     │                  │                  │
+│ ...              │                  │                  │
+│ [A] Run All      │                  │                  │
+│ [C] Run All CVEs │                  │                  │
+└──────────────────┴──────────────────┴──────────────────┘
+```
+
+| 🔢 # | ⚔️ Module | ⛓️ Phase | 🫧 OPSEC | 🛠️ Method |
+|:-----|:----------|:---------|:--------|:----------|
+| 1 | 🔍 Recon scan | Recon | quiet | `nmap` top 1000 ports + service detection |
+| 2 | 🔓 SSH brute-force | Cred Access | loud | `hydra` / `sshpass` (15 creds) |
+| 3 | 🔓 FTP brute-force | Cred Access | loud | `hydra` / `curl` (15 creds) |
+| 4 | 🔓 HTTP brute-force | Cred Access | loud | `curl` POST (15 creds) |
+| 5 | 🛢️ MySQL brute-force | Cred Access | loud | `mysql` client |
+| 6 | 💉 SQL injection | Execution | quiet | `sqlmap` + hand-rolled (4 variants) |
+| 7 | 💉 Command injection | Execution | loud | `curl` (5 payload variants) |
+| 8 | 🐚 Webshell deploy | Execution | loud | Upload + execute |
+| 9 | 📄 LFI | Execution | loud | Path traversal (8 targets) |
+| 10 | 🔄 SSRF | Execution | quiet | Internal endpoint enum |
+| 11 | 📝 XXE | Execution | quiet | XML entity (3 targets) |
+| 12 | 🆔 IDOR | Cred Access | quiet | User enum (7 IDs) |
+| 13 | 🥒 Pickle deser | Execution | loud | Base64 pickle RCE |
+| 14 | 🔑 Cred harvest | Cred Access | quiet | Env dump + LFI + SSH keys |
+| 15 | 🐳 Docker escape | Priv Esc | loud | Docker socket `/docker` |
+| 16 | 📌 Persistence | Persistence | loud | SSH key + cron backdoor |
+| 17 | 🕷️ Crawler | Collection | quiet | 50-path wordlist |
+| 18 | 🦠 C2 beacon | C2 | quiet | `curl` (3 attempts) |
+| 19 | 🔒 Ransomware | Impact | loud | `POST /admin/ransomware-demo` |
+| 20 | 📤 DNS exfil | Exfil | quiet | DNS tunneling |
+| 21 | 💀 Defacement | Impact | loud | `POST /admin/deface` |
+| 22 | 🗑️ DB wipe | Impact | loud | `POST /admin/wipe-db` |
+| 23 | 🧹 Log clear | Impact | loud | `POST /admin/clear-logs` |
+| 24 | 🐳 **CVE-2021-41773** | Init Access | loud | Path traversal + CGI RCE |
+| 25 | 💣 **CVE-2014-6271** | Init Access | loud | User-Agent injection |
+| 26 | 📁 **CVE-2015-3306** | Init Access | quiet | SITE CPFR/CPTO copy |
+| 27 | 🕸️ **CVE-2019-15107** | Init Access | medium | password_change.cgi CMDi |
+| 28 | 👻 **CVE-2020-1938** | Init Access | medium | AJP binary packet (Python) |
+| 29 | 🪵 **Log4Shell Pattern** | Execution | medium | `${jndi:ldap://...}` resolve |
+| 30 | 🌱 **Spring4Shell Pattern** | Init Access | medium | Nested param → file write |
+| 31 | 📦 **Struts2 Pattern** | Init Access | loud | `../` upload → RCE |
+| 32 | 👑 **CVE-2021-4034** | Priv Esc | quiet | pkexec arg injection → root |
+
+---
+
+### 🔗 Multi-Stage Attack Chains
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  CHAIN A:  SQLi ──▶ Cred Dump ──▶ SSH ──▶ Docker Escape      │
+│  CHAIN B:  CMDi ──▶ Webshell ──▶ Persist ──▶ Impact          │
+│  CHAIN C:  SSRF ──▶ Enum ──▶ LFI ──▶ DNS Exfil              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### ⛓️ Run All Scenarios (Full Kill-Chain)
+
+```
+ Recon  -->  CVE Init Access  -->  Web Exploit  -->  Brute Force
+                                                    │
+   Impact  <--  Exfil  <--  Post-Exploit  <--  CVE Priv Esc
+```
+
+`A` hotkey runs all 8 phases. `C` hotkey chains all 9 CVE exploits.
+
+---
+
+## 📁 Project Structure
 
 ```
 bait-n-break/
-+-- run.sh
-+-- setup.sh
-+-- bait_n_break/
-|   +-- shared/
-|   |   +-- config.sh
-|   |   +-- lib_ui.sh
-|   |   +-- lib_state.sh
-|   +-- tui/
-|   |   +-- ansi_tui.sh
-|   |   +-- main_menu.sh
-|   |   +-- victim_dashboard.sh
-|   |   +-- victim_dashboard_fallback.sh
-|   |   +-- attacker_console.sh
-|   |   +-- attacker_console_fallback.sh
-|   +-- victim/
-|   |   +-- lib_bait.sh
-|   |   +-- lib_webapp.sh
-|   |   +-- lib_monitor.sh
-|   |   +-- lib_malware_sim.sh
-|   |   +-- lib_vuln_overview.sh
-|   |   +-- lib_live_dashboard.sh
-|   |   +-- webapp/
-|   |       +-- app.py
-|   |       +-- Dockerfile
-|   |       +-- docker-compose.yml
-|   |       +-- requirements.txt
-|   |       +-- cve-services/
-|   |           +-- apache-2.4.49/
-|   |           +-- shellshock/
-|   |           +-- proftpd-1.3.5/
-|   |           +-- webmin-1.890/
-|   |           +-- tomcat-ghostcat/
-|   |           +-- polkit/
-|   +-- attacker/
-|       +-- lib_results.sh
-|       +-- lib_target.sh
-|       +-- lib_recon.sh
-|       +-- lib_bruteforce.sh
-|       +-- lib_web_exploit.sh
-|       +-- lib_cve_exploits.sh
-|       +-- lib_crawler.sh
-|       +-- lib_malware_c2.sh
-|       +-- lib_post_exploit.sh
-|       +-- wordlists/
-|           +-- common_paths.txt (50 paths)
-+-- .state/ (runtime, gitignored)
+├── run.sh                          🚀 Single entry point
+├── setup.sh                        📦 Dependency installer
+├── bait_n_break/
+│   ├── shared/
+│   │   ├── config.sh               ⚙️  Paths + port constants
+│   │   ├── lib_ui.sh               🖥️  TUI helpers (whiptail/dialog)
+│   │   └── lib_state.sh            💾 State persistence
+│   ├── tui/
+│   │   ├── ansi_tui.sh             🎨 ANSI TUI rendering engine
+│   │   ├── main_menu.sh            🏠 Role selection menu
+│   │   ├── victim_dashboard.sh     🎯 Victim live ANSI dashboard
+│   │   ├── victim_dashboard_fallback.sh  ⬇️  Whiptail fallback
+│   │   ├── attacker_console.sh     💥 Attacker ANSI TUI
+│   │   └── attacker_console_fallback.sh  ⬇️  Whiptail fallback
+│   ├── victim/
+│   │   ├── lib_bait.sh             🍯 Bait file generator
+│   │   ├── lib_webapp.sh           🐳 Docker compose wrapper
+│   │   ├── lib_monitor.sh          📡 Access + incident monitor
+│   │   ├── lib_malware_sim.sh      💣 Malware simulation
+│   │   ├── lib_vuln_overview.sh    🧬 Static vulnerability overview
+│   │   ├── lib_live_dashboard.sh   📊 Live data-gathering (ports, conns, vulns)
+│   │   └── webapp/
+│   │       ├── app.py              🐍 Flask vulnerable web app
+│   │       ├── Dockerfile          🏗️  Webapp container build
+│   │       ├── docker-compose.yml  🐳 All services orchestration
+│   │       ├── requirements.txt    📦 Flask==3.0.3
+│   │       └── cve-services/       🐳 Real CVE Docker services
+│   │           ├── apache-2.4.49/  CVE-2021-41773
+│   │           ├── shellshock/     CVE-2014-6271
+│   │           ├── proftpd-1.3.5/  CVE-2015-3306
+│   │           ├── webmin-1.890/   CVE-2019-15107
+│   │           ├── tomcat-ghostcat/ CVE-2020-1938
+│   │           └── polkit/         CVE-2021-4034
+│   └── attacker/
+│       ├── lib_results.sh          📊 Results tracking + CVE scoring
+│       ├── lib_target.sh           🎯 Target IP/port config
+│       ├── lib_recon.sh            🔍 Reconnaissance (nmap + /dev/tcp)
+│       ├── lib_bruteforce.sh       🔓 SSH/FTP/HTTP brute force
+│       ├── lib_web_exploit.sh      💉 SQLi / CMDi / Webshell / XSS
+│       ├── lib_cve_exploits.sh     🧬 9 CVE exploit functions
+│       ├── lib_crawler.sh          🕷️ Bait file crawler
+│       ├── lib_malware_c2.sh       🦠 Malware + C2 simulation
+│       ├── lib_post_exploit.sh     🔗 Post-exploit (LFI/SSRF/XXE/IDOR/chains)
+│       └── wordlists/
+│           └── common_paths.txt    📋 50 common web paths
+└── .state/                         💾 Runtime state (gitignored)
 ```
 
 ---
 
-## Safety
+## 🛡️ Safety
 
-- **All credentials are dummy** -- `admin:admin123`, `root:toor`, fake AWS/GCP/Azure keys
-- **All bait content is inert** -- no real secrets, safe to leave on disk
-- **Malware sim is sandboxed** -- ransomware demo confined to `ransomware_target/`
-- **Docker isolation** -- vulnerable services run in containers
-- **Lab-only** -- never deploy outside an isolated training network
-
----
-
-## Requirements
-
-- **OS:** Ubuntu, Kali, or Debian
-- **Dependencies:** Docker, Docker Compose (V2 plugin or legacy `docker-compose`), `whiptail` (or `dialog`)
-- **Optional:** `hydra`, `sqlmap`, `nmap`, `sshpass`, `python3` -- installed by `setup.sh`, fallbacks built-in
-- **TUI:** `bash` 4.x+, `tput` (ncurses-base, pre-installed on all supported distros)
+| ✅ Safe | ❌ Not Safe |
+|:--------|:-----------|
+| All credentials are **dummy** (`admin:admin123`, `root:toor`) | Never deploy outside isolated lab |
+| All bait content is **inert** — fake AWS/GCP/Azure keys | Not for production use |
+| Malware sim is **sandboxed** — confined to `ransomware_target/` | Not for attacking real targets |
+| Vulnerable services run in **Docker containers** | Requires isolated network |
 
 ---
 
-## License
+## 📋 Requirements
 
-This project is for educational purposes only. Do not deploy outside an isolated lab environment.
+| 📦 Package | 📝 Notes |
+|:-----------|:---------|
+| **Docker** | + Compose (V2 plugin or legacy `docker-compose`) |
+| **whiptail** | Or `dialog` — for fallback TUI |
+| **bash** 4.x+ | Standard on Ubuntu/Kali |
+| **tput** | From ncurses-base (pre-installed) |
+| **hydra** *(opt)* | SSH/FTP brute force — fallback built-in |
+| **sqlmap** *(opt)* | SQL injection — hand-rolled fallback |
+| **nmap** *(opt)* | Port scanning — `/dev/tcp` fallback |
+| **sshpass** *(opt)* | SSH login — hydra fallback |
+| **python3** *(opt)* | Ghostcat AJP exploit — pre-installed on Kali |
+
+> `setup.sh` installs all missing packages automatically.
+
+---
+
+## 📄 License
+
+This project is for **educational purposes only**. Do not deploy outside an isolated lab environment.
