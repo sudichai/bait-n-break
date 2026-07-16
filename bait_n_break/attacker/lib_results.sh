@@ -21,3 +21,28 @@ results_summary() {
 results_clear() {
     : > "${BNB_ATTACK_RESULTS}"
 }
+
+results_cve_summary() {
+    if [ ! -f "${BNB_ATTACK_RESULTS}" ]; then
+        echo "No attack results yet."
+        return
+    fi
+    echo ""
+    echo "=============================================="
+    echo "  CVE EXPLOIT RESULTS SUMMARY"
+    echo "=============================================="
+    local cve_count=0 cve_success=0
+    while IFS= read -r line; do
+        if echo "$line" | grep -q "CVE-"; then
+            cve_count=$((cve_count + 1))
+            if echo "$line" | grep -q "VULNERABLE\|SUCCESS"; then
+                echo "  [VULN] $line"
+                cve_success=$((cve_success + 1))
+            else
+                echo "  [----] $line"
+            fi
+        fi
+    done < "${BNB_ATTACK_RESULTS}"
+    echo "  CVE score: ${cve_success}/${cve_count} exploited"
+    echo ""
+}
