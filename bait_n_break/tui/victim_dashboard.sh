@@ -35,6 +35,11 @@ victim_dashboard() {
     fi
 
     echo -n "  [..] Starting Docker containers...      "
+    docker ps >/dev/null 2>&1 || {
+        echo -e "\r  [..] Docker daemon not running, attempting start..."
+        sudo systemctl start docker 2>/dev/null || sudo service docker start 2>/dev/null || true
+        sleep 2
+    }
     if webapp_up >/dev/null 2>&1; then
         echo -e "\r  [OK] Starting Docker containers...      "
     else
@@ -51,16 +56,37 @@ victim_dashboard() {
 
     echo ""
     if [ -n "$deploy_failed" ]; then
-        echo "=============================================="
-        echo "  DEPLOY FAILED"
-        echo "  Is Docker installed and running?"
-        echo "=============================================="
-        echo ""
-        read -r -p "  [R] Retry  [B] Back to menu: " choice
-        case "$choice" in
-            R|r) exec bash "${BASH_SOURCE[0]}" 2>/dev/null; victim_dashboard; return ;;
-            *) return ;;
-        esac
+        while true; do
+            echo "=============================================="
+            echo "  DEPLOY FAILED"
+            echo "  Is Docker installed and running?"
+            echo "=============================================="
+            echo ""
+            printf "  [R] Retry  [B] Back to menu: "
+            read -r choice
+            case "$choice" in
+                R|r)
+                    echo ""
+                    echo -n "  [..] Starting Docker containers...      "
+                    docker ps >/dev/null 2>&1 || {
+                        echo -e "\r  [..] Attempting to start Docker daemon..."
+                        sudo systemctl start docker 2>/dev/null || sudo service docker start 2>/dev/null || true
+                        sleep 2
+                    }
+                    if webapp_up >/dev/null 2>&1; then
+                        echo -e "\r  [OK] Starting Docker containers...      "
+                        state_set_status "deployed"
+                        echo -n "  [..] Activating monitor...              "
+                        monitor_start 2>/dev/null
+                        echo -e "\r  [OK] Activating monitor...              "
+                        break
+                    else
+                        echo -e "\r  [FAIL] Docker containers failed to start"
+                    fi
+                    ;;
+                *) return ;;
+            esac
+        done
     fi
 
     echo "  All services ready. Starting dashboard..."
