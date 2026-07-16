@@ -100,7 +100,6 @@ attacker_console() {
             "XSS PoC|reflected + stored XSS|quiet"
             "CVE-2021-41773 Apache|path traversal -> RCE|medium"
             "CVE-2014-6271 Shellshock|bash CGI injection|loud"
-            "CVE-2015-3306 ProFTPD|mod_copy file copy|quiet"
             "CVE-2019-15107 Webmin|password_change.cgi CMDi|medium"
             "CVE-2020-1938 Tomcat Ghostcat|AJP file read -> RCE|medium"
             "Log4Shell Pattern|JNDI injection /api/log|medium"
@@ -126,7 +125,7 @@ attacker_console() {
             return
         fi
         local i
-        local -a key_map=( recon "bruteforce" "exploit_sqli" "exploit_command" "exploit_webshell" "exploit_xss" "exploit_apache" "exploit_shellshock" "exploit_proftpd" "exploit_webmin" "exploit_ghostcat" "exploit_log4shell" "exploit_spring4shell" "exploit_struts" "exploit_polkit" "crawler" "post_exploit" "malware" )
+        local -a key_map=( recon "bruteforce" "exploit_sqli" "exploit_command" "exploit_webshell" "exploit_xss" "exploit_apache" "exploit_shellshock" "exploit_webmin" "exploit_ghostcat" "exploit_log4shell" "exploit_spring4shell" "exploit_struts" "exploit_polkit" "crawler" "post_exploit" "malware" )
         for ((i = 0; i < VEC_COUNT; i++)); do
             local key="${key_map[$i]}"
             local found
@@ -268,16 +267,15 @@ attacker_console() {
             6)  _run_exploit_with_output "XSS PoC" exploit_xss_poc ;;
             7)  _run_exploit_with_output "CVE-2021-41773" exploit_apache_41773 2>/dev/null || true ;;
             8)  _run_exploit_with_output "CVE-2014-6271" exploit_shellshock_6271 2>/dev/null || true ;;
-            9)  _run_exploit_with_output "CVE-2015-3306" exploit_proftpd_3306 2>/dev/null || true ;;
-            10) _run_exploit_with_output "CVE-2019-15107" exploit_webmin_15107 2>/dev/null || true ;;
-            11) _run_exploit_with_output "CVE-2020-1938" exploit_ghostcat_1938 2>/dev/null || true ;;
-            12) _run_exploit_with_output "Log4Shell Pattern" exploit_log4shell_pattern 2>/dev/null || true ;;
-            13) _run_exploit_with_output "Spring4Shell" exploit_spring4shell_pattern 2>/dev/null || true ;;
-            14) _run_exploit_with_output "Struts2 Upload" exploit_struts_upload_pattern 2>/dev/null || true ;;
-            15) _run_exploit_with_output "Polkit LPE" exploit_polkit_4034 2>/dev/null || true ;;
-            16) _run_exploit_with_output "Crawler" crawl_all 2>/dev/null || true ;;
-            17) _run_exploit_with_output "Post-Exploit" post_exploit_all 2>/dev/null || true ;;
-            18) _run_exploit_with_output "Malware/C2" malware_c2_all 2>/dev/null || true ;;
+            9)  _run_exploit_with_output "CVE-2019-15107" exploit_webmin_15107 2>/dev/null || true ;;
+            10) _run_exploit_with_output "CVE-2020-1938" exploit_ghostcat_1938 2>/dev/null || true ;;
+            11) _run_exploit_with_output "Log4Shell Pattern" exploit_log4shell_pattern 2>/dev/null || true ;;
+            12) _run_exploit_with_output "Spring4Shell" exploit_spring4shell_pattern 2>/dev/null || true ;;
+            13) _run_exploit_with_output "Struts2 Upload" exploit_struts_upload_pattern 2>/dev/null || true ;;
+            14) _run_exploit_with_output "Polkit LPE" exploit_polkit_4034 2>/dev/null || true ;;
+            15) _run_exploit_with_output "Crawler" crawl_all 2>/dev/null || true ;;
+            16) _run_exploit_with_output "Post-Exploit" post_exploit_all 2>/dev/null || true ;;
+            17) _run_exploit_with_output "Malware/C2" malware_c2_all 2>/dev/null || true ;;
             A|a)
                 _run_exploit_with_output "Reconnaissance" recon_scan
                 TUI_PANEL_MID=("" "[*] Phase: CVE Init Access" "")
@@ -285,7 +283,6 @@ attacker_console() {
                 timeout 15 exploit_ghostcat_1938 >/dev/null 2>&1 || true
                 timeout 15 exploit_shellshock_6271 >/dev/null 2>&1 || true
                 timeout 15 exploit_apache_41773 >/dev/null 2>&1 || true
-                timeout 15 exploit_proftpd_3306 >/dev/null 2>&1 || true
                 timeout 15 exploit_webmin_15107 >/dev/null 2>&1 || true
                 timeout 15 exploit_log4shell_pattern >/dev/null 2>&1 || true
                 timeout 15 exploit_spring4shell_pattern >/dev/null 2>&1 || true
@@ -319,7 +316,6 @@ attacker_console() {
                 timeout 15 exploit_ghostcat_1938 >/dev/null 2>&1 || true
                 timeout 15 exploit_shellshock_6271 >/dev/null 2>&1 || true
                 timeout 15 exploit_apache_41773 >/dev/null 2>&1 || true
-                timeout 15 exploit_proftpd_3306 >/dev/null 2>&1 || true
                 timeout 15 exploit_webmin_15107 >/dev/null 2>&1 || true
                 timeout 15 exploit_log4shell_pattern >/dev/null 2>&1 || true
                 timeout 15 exploit_spring4shell_pattern >/dev/null 2>&1 || true

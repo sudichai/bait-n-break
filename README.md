@@ -33,9 +33,9 @@ git clone https://github.com/sudichai/bait-n-break.git && cd bait-n-break && bas
 │  │                     │      │                         │    │
 │  │  Flask Web App      │      │  ANSI TUI Dashboard     │    │
 │  │  MySQL 5.7          │      │  Recon (nmap)           │    │
-│  │  SSH Decoy          │  ->  │  32 Attack Modules      │    │
-│  │  FTP Decoy          │      │  9 CVE Exploits         │    │
-│  │  6 CVE Services     │      │  3 Attack Chains        │    │
+│  │  SSH Decoy          │  ->  │  31 Attack Modules      │    │
+│  │  FTP Decoy          │      │  8 CVE Exploits         │    │
+│  │  5 CVE Services     │      │  3 Attack Chains        │    │
 │  │  31 Bait Files      │      │  Results + Scoring      │    │
 │  │  Live Monitor       │      │                         │    │
 │  └─────────────────────┘      └─────────────────────────┘    │
@@ -52,7 +52,7 @@ git clone https://github.com/sudichai/bait-n-break.git && cd bait-n-break && bas
 | 🛢️ **MySQL Database** | Port `3306` · `root:root` / `webapp:webapp123` |
 | 🔓 **SSH Decoy** | Port `2222` · `admin:admin123` · sudo access |
 | 🔓 **FTP Decoy** | Port `2121` · `admin:admin123` |
-| 🐳 **6 Real CVE Services** | Dockerized with published exploits → see table below |
+| 🐳 **5 Real CVE Services** | Dockerized with published exploits → see table below |
 | 🍯 **Bait Files** | **31 decoy files** · cloud creds · SSH keys · CI/CD secrets · VPN configs · DB dumps |
 | 🖥️ **Live ANSI Dashboard** | 3-panel TUI: services + connections · vuln counts · incidents (refresh 2s) |
 | 📡 **Live Monitor** | Real-time webapp + auth + bait file access log tailing |
@@ -66,7 +66,6 @@ git clone https://github.com/sudichai/bait-n-break.git && cd bait-n-break && bas
 |:-------|:-----------|:-------|:---------|:-------------|
 | **CVE-2021-41773** | Apache HTTPD 2.4.49 | `8081` | Path Traversal → RCE via CGI | Initial Access |
 | **CVE-2014-6271** | Shellshock (Bash CGI) | `8082` | Env Injection → RCE | Initial Access |
-| **CVE-2015-3306** | ProFTPD 1.3.5 mod_copy | `2122` | Unauth File Copy → RCE | Initial Access |
 | **CVE-2019-15107** | Webmin ≤1.920 | `10000` | Auth Bypass → CMDi | Initial Access |
 | **CVE-2020-1938** | Tomcat Ghostcat (AJP) | `8083`/`8009` | AJP LFI → RCE | Recon / Initial Access |
 | **CVE-2021-4034** | Polkit pkexec LPE | `(local)` | Arg Injection → Root | Priv Escalation |
@@ -95,7 +94,7 @@ git clone https://github.com/sudichai/bait-n-break.git && cd bait-n-break && bas
 │                                                                              │
 │  🔑 INITIAL ACCESS (14)                                                     │
 │      SQLi /login  |  Upload /upload  |  SSH :2222  |  FTP :2121             │
-│      MySQL :3306  |  6x CVE Services  |  3x Flask CVE patterns               │
+│      MySQL :3306  |  5x CVE Services  |  3x Flask CVE patterns               │
 │                                                                              │
 │  ⚡ EXECUTION (8)                                                            │
 │      CMDi /ping  |  LFI /read  |  SSRF /fetch  |  XXE /parse                │
@@ -175,13 +174,12 @@ git clone https://github.com/sudichai/bait-n-break.git && cd bait-n-break && bas
 | 23 | 🧹 Log clear | Impact | loud | `POST /admin/clear-logs` |
 | 24 | 🐳 **CVE-2021-41773** | Init Access | loud | Path traversal + CGI RCE |
 | 25 | 💣 **CVE-2014-6271** | Init Access | loud | User-Agent injection |
-| 26 | 📁 **CVE-2015-3306** | Init Access | quiet | SITE CPFR/CPTO copy |
-| 27 | 🕸️ **CVE-2019-15107** | Init Access | medium | password_change.cgi CMDi |
-| 28 | 👻 **CVE-2020-1938** | Init Access | medium | AJP binary packet (Python) |
-| 29 | 🪵 **Log4Shell Pattern** | Execution | medium | `${jndi:ldap://...}` resolve |
-| 30 | 🌱 **Spring4Shell Pattern** | Init Access | medium | Nested param → file write |
-| 31 | 📦 **Struts2 Pattern** | Init Access | loud | `../` upload → RCE |
-| 32 | 👑 **CVE-2021-4034** | Priv Esc | quiet | pkexec arg injection → root |
+| 26 | 🕸️ **CVE-2019-15107** | Init Access | medium | password_change.cgi CMDi |
+| 27 | 👻 **CVE-2020-1938** | Init Access | medium | AJP binary packet (Python) |
+| 28 | 🪵 **Log4Shell Pattern** | Execution | medium | `${jndi:ldap://...}` resolve |
+| 29 | 🌱 **Spring4Shell Pattern** | Init Access | medium | Nested param → file write |
+| 30 | 📦 **Struts2 Pattern** | Init Access | loud | `../` upload → RCE |
+| 31 | 👑 **CVE-2021-4034** | Priv Esc | quiet | pkexec arg injection → root |
 
 ---
 
@@ -203,7 +201,7 @@ git clone https://github.com/sudichai/bait-n-break.git && cd bait-n-break && bas
    Impact  <--  Exfil  <--  Post-Exploit  <--  CVE Priv Esc
 ```
 
-`A` hotkey runs all 8 phases. `C` hotkey chains all 9 CVE exploits.
+`A` hotkey runs all 8 phases. `C` hotkey chains all 8 CVE exploits.
 
 ---
 
@@ -240,7 +238,6 @@ bait-n-break/
 │   │       └── cve-services/       🐳 Real CVE Docker services
 │   │           ├── apache-2.4.49/  CVE-2021-41773
 │   │           ├── shellshock/     CVE-2014-6271
-│   │           ├── proftpd-1.3.5/  CVE-2015-3306
 │   │           ├── webmin-1.890/   CVE-2019-15107
 │   │           ├── tomcat-ghostcat/ CVE-2020-1938
 │   │           └── polkit/         CVE-2021-4034
@@ -250,7 +247,7 @@ bait-n-break/
 │       ├── lib_recon.sh            🔍 Reconnaissance (nmap + /dev/tcp)
 │       ├── lib_bruteforce.sh       🔓 SSH/FTP/HTTP brute force
 │       ├── lib_web_exploit.sh      💉 SQLi / CMDi / Webshell / XSS
-│       ├── lib_cve_exploits.sh     🧬 9 CVE exploit functions
+│       ├── lib_cve_exploits.sh     🧬 8 CVE exploit functions
 │       ├── lib_crawler.sh          🕷️ Bait file crawler
 │       ├── lib_malware_c2.sh       🦠 Malware + C2 simulation
 │       ├── lib_post_exploit.sh     🔗 Post-exploit (LFI/SSRF/XXE/IDOR/chains)

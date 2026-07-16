@@ -10,7 +10,6 @@ LIVE_SERVICES=(
     "db:3306"
     "apache-41773:${BNB_CVE_APACHE_41773_PORT:-8081}"
     "shellshock:${BNB_CVE_SHELLSHOCK_PORT:-8082}"
-    "proftpd:${BNB_CVE_PROFTPD_PORT:-2122}"
     "webmin:${BNB_CVE_WEBMIN_PORT:-10000}"
     "tomcat:${BNB_CVE_TOMCAT_HTTP_PORT:-8083}"
 )
@@ -47,7 +46,6 @@ live_count_vulns() {
     local webapp_up=0
     local cve41773_up=0
     local cve6271_up=0
-    local cve3306_up=0
     local cve15107_up=0
     local cve1938_up=0
 
@@ -61,10 +59,6 @@ live_count_vulns() {
     fi
     if ss -tulpn 2>/dev/null | grep -q ":${BNB_CVE_SHELLSHOCK_PORT:-8082}\b" || (exec 3<>/dev/tcp/127.0.0.1/${BNB_CVE_SHELLSHOCK_PORT:-8082}) 2>/dev/null; then
         cve6271_up=1
-        exec 3<&- 2>/dev/null; exec 3>&- 2>/dev/null
-    fi
-    if ss -tulpn 2>/dev/null | grep -q ":${BNB_CVE_PROFTPD_PORT:-2122}\b" || (exec 3<>/dev/tcp/127.0.0.1/${BNB_CVE_PROFTPD_PORT:-2122}) 2>/dev/null; then
-        cve3306_up=1
         exec 3<&- 2>/dev/null; exec 3>&- 2>/dev/null
     fi
     if ss -tulpn 2>/dev/null | grep -q ":${BNB_CVE_WEBMIN_PORT:-10000}\b" || (exec 3<>/dev/tcp/127.0.0.1/${BNB_CVE_WEBMIN_PORT:-10000}) 2>/dev/null; then
@@ -90,7 +84,6 @@ live_count_vulns() {
         "IMPACT|5|$webapp_up" \
         "CVE-41773|1|$cve41773_up" \
         "CVE-6271|1|$cve6271_up" \
-        "CVE-3306|1|$cve3306_up" \
         "CVE-15107|1|$cve15107_up" \
         "CVE-1938|1|$cve1938_up" \
         "FLASK CVE|3|$webapp_up"
