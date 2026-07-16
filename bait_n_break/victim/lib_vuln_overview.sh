@@ -187,4 +187,17 @@ victim_vuln_overview() {
     echo "  Chain B: CMDi  -> Webshell -> Persistence -> Impact"
     echo "  Chain C: SSRF  -> Internal Enum -> DB Exploit -> Exfil"
     echo ""
+
+    echo "--- REAL CVE SERVICES (Dockerized) ---"
+    echo "  CVE-2021-41773  Apache 2.4.49  Path Traversal -> RCE    :${BNB_CVE_APACHE_41773_PORT:-8081}"
+    echo "  CVE-2014-6271   Shellshock CGI  Env Injection -> RCE     :${BNB_CVE_SHELLSHOCK_PORT:-8082}"
+    echo "  CVE-2015-3306   ProFTPD 1.3.5   mod_copy -> RCE          :${BNB_CVE_PROFTPD_PORT:-2122}"
+    echo "  CVE-2019-15107  Webmin 1.890    Auth Bypass -> RCE       :${BNB_CVE_WEBMIN_PORT:-10000}"
+    echo "  CVE-2020-1938   Tomcat Ghostcat AJP LFI -> RCE           :${BNB_CVE_TOMCAT_HTTP_PORT:-8083}:8009"
+    echo "  CVE-2021-4034   Polkit pkexec   Local Priv Esc (SUID)    (inside container)"
+    echo ""
+    echo "--- CVE-PATTERNED FLASK ENDPOINTS ---"
+    echo "  /api/log            Log4Shell-style JNDI injection (CVE-2021-44228 pattern)"
+    echo "  /api/server/config   Spring4Shell-style param binding (CVE-2022-22965 pattern)"
+    echo "  /api/upload-archive  Struts2-style path traversal upload (CVE-2023-50164 pattern)"
 }
