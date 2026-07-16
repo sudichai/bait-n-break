@@ -38,7 +38,21 @@ victim_dashboard() {
     done
     if [ -n "$need_dl" ]; then
         echo "  [..] Downloading CVE dependencies (first run)..."
-        bash "${cve_dir}/download.sh" 2>&1 | while IFS= read -r l; do echo "  $l"; done
+        bash "${cve_dir}/download.sh"
+        # Re-check after download
+        need_dl=""
+        for f in \
+            "${cve_dir}/proftpd-1.3.5/proftpd-1.3.5.tar.gz" \
+            "${cve_dir}/webmin-1.890/webmin_1.890_all.deb" \
+            "${cve_dir}/tomcat-ghostcat/apache-tomcat-9.0.30.tar.gz"; do
+            [ -f "$f" ] || need_dl=1
+        done
+        if [ -n "$need_dl" ]; then
+            echo "  [FAIL] Could not download all dependencies"
+            read -r -p "  Press Enter to return to menu..." _
+            return
+        fi
+        echo "  [OK] CVE dependencies downloaded"
         echo ""
     fi
 
