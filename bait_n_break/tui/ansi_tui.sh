@@ -25,6 +25,8 @@ TUI_CURSOR_VECTOR=0
 TUI_VECTOR_COUNT=0
 TUI_ACTIVE_VECTOR=""
 TUI_FOOTER_TEXT=""
+TUI_USE_ASCII_HEADER=0
+TUI_PANEL_Y_OFFSET=4  # default: header(2) + gap(2) = start panels at y=4
 
 tui_init() {
     TUI_TERM_W=$(tput cols 2>/dev/null || echo 80)
@@ -50,6 +52,10 @@ tui_cleanup() {
 }
 
 tui_draw_header() {
+    if [ "$TUI_USE_ASCII_HEADER" = "1" ]; then
+        tui_draw_ascii_header
+        return
+    fi
     local title="${1:-$TUI_HEADER_TITLE}" status="${2:-$TUI_HEADER_STATUS}"
     local w="$TUI_TERM_W"
     local label="[${title}] - System Vulnerability Tool v1.0"
@@ -61,16 +67,38 @@ tui_draw_header() {
     printf '\033[7m\033[1m  %s%*s  %s\033[0m' "$label" "$padding" "" "$status_label"
 }
 
+tui_draw_ascii_header() {
+    local w="$TUI_TERM_W"
+    local lines=(
+        "  _           _ _                      _                    _    "
+        " | |         (_) |                    | |                  | |   "
+        " | |__   __ _ _| |_ ______ _ __ ______| |__  _ __ ___  __ _| | __"
+        " | '_ \\ / _\` | | __|______| '_ \\______| '_ \\| '__/ _ \\/ _\` | |/ /"
+        " | |_) | (_| | | |_       | | | |     | |_) | | |  __/ (_| |   < "
+        " |_.__/ \\__,_|_|\\__|      |_| |_|     |_.__/|_|  \\___|\\__,_|_|\\_\\"
+        "                         sudichai/bait-n-break                     "
+    )
+    local i
+    for ((i = 0; i < 7; i++)); do
+        tput cup "$i" 0
+        printf '\033[1m\033[32m%s\033[0m' "${lines[$i]}"
+    done
+}
+
 tui_draw_target_bar() {
     local ip="${1:-$TUI_TARGET_IP}" tp="${2:-$TUI_TARGET_TYPE}" nat="${3:-$TUI_TARGET_NAT}"
+    local status="${4:-$TUI_HEADER_STATUS}"
     local w="$TUI_TERM_W"
-    local line="  TARGET: ${ip}   [${tp}]"
-    local tail="[${nat}]"
-    local padding=$((w - ${#line} - ${#tail} - 4))
-    [ "$padding" -lt 1 ] && padding=1
+    local y=1
+    [ "$TUI_USE_ASCII_HEADER" = "1" ] && y=8
 
-    tput cup 1 0
-    printf '%s%*s  %s' "$line" "$padding" "" "$tail"
+    local line="  TARGET: ${ip}   [${tp}]"
+    local tail="[${nat}]   Status: ${status}"
+
+    tput cup "$y" 0
+    printf '\033[7m%-*s\033[0m' "$w" "$line$(printf '%*s' $((w - ${#line})) '')"
+    tput cup "$((y + 1))" 0
+    printf ' %s%*s' "$tail" "$((w - ${#tail} - 1))" ""
 }
 
 tui_draw_footer() {
@@ -129,13 +157,16 @@ tui_draw_layout() {
     tui_draw_header
     tui_draw_target_bar
 
+    local panel_y=4
+    [ "$TUI_USE_ASCII_HEADER" = "1" ] && panel_y=10
+
     local panel_w=$(( (TUI_TERM_W - 2) / 3 ))
-    local panel_h=$(( TUI_TERM_H - 4 ))
+    local panel_h=$(( TUI_TERM_H - panel_y - 1 ))
     local x1=0 x2=$((panel_w + 1)) x3=$((2 * panel_w + 2))
 
-    tui_draw_panel "$x1" 2 "$panel_w" "$panel_h" "$TUI_LEFT_TITLE" TUI_PANEL_LEFT
-    tui_draw_panel "$x2" 2 "$panel_w" "$panel_h" "$TUI_MID_TITLE" TUI_PANEL_MID
-    tui_draw_panel "$x3" 2 "$panel_w" "$panel_h" "$TUI_RIGHT_TITLE" TUI_PANEL_RIGHT
+    tui_draw_panel "$x1" "$panel_y" "$panel_w" "$panel_h" "$TUI_LEFT_TITLE" TUI_PANEL_LEFT
+    tui_draw_panel "$x2" "$panel_y" "$panel_w" "$panel_h" "$TUI_MID_TITLE" TUI_PANEL_MID
+    tui_draw_panel "$x3" "$panel_y" "$panel_w" "$panel_h" "$TUI_RIGHT_TITLE" TUI_PANEL_RIGHT
 
     tui_draw_footer
 }

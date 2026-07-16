@@ -75,10 +75,11 @@ attacker_console() {
     source "${BNB_ROOT}/bait_n_break/attacker/lib_results.sh"
 
     TUI_LEFT_TITLE="ATTACK VECTORS"
-    TUI_MID_TITLE="VULNERABILITIES FOUND"
-    TUI_RIGHT_TITLE="EXECUTE / LOGS"
+    TUI_MID_TITLE="EXECUTE / LOGS"
+    TUI_RIGHT_TITLE="VULNERABILITIES FOUND"
     TUI_HEADER_TITLE="HACKER LABS"
     TUI_FOOTER_TEXT="  <H> HOME | <T> TARGET | <A> RUN ALL | <C> RUN CVEs | <L> LOGS | <Q> BACK"
+    TUI_USE_ASCII_HEADER=1
     TUI_CURSOR_VECTOR=0
 
     _load_target_state() {
@@ -142,7 +143,7 @@ attacker_console() {
         if [ "$TUI_CURSOR_VECTOR" -ge 0 ] 2>/dev/null && [ "$TUI_CURSOR_VECTOR" -lt 18 ] 2>/dev/null; then
             local panel_w=$(( (TUI_TERM_W - 2) / 3 ))
             local x=1
-            local y=$(( 3 + TUI_CURSOR_VECTOR ))
+            local y=$(( 11 + TUI_CURSOR_VECTOR ))
             local line="${TUI_PANEL_LEFT[$TUI_CURSOR_VECTOR]:-}"
             tput cup "$y" "$x"
             printf '\033[7m %-*s \033[0m' "$((panel_w - 2))" "${line:0:$((panel_w - 2))}"
@@ -152,22 +153,24 @@ attacker_console() {
     _run_exploit_with_output() {
         local name="$1"
         shift
-        TUI_PANEL_RIGHT=("" "[*] Executing: ${name}" "----------------------------------------")
+        local panel_y=10
+        local panel_h=$(( TUI_TERM_H - panel_y - 1 ))
+        TUI_PANEL_MID=("" "[*] Executing: ${name}" "----------------------------------------")
 
         local tmpfile
         tmpfile="$(mktemp)"
 
         while IFS= read -r line; do
             echo "$line" >> "$tmpfile"
-            TUI_PANEL_RIGHT+=("${line}")
-            if [ "${#TUI_PANEL_RIGHT[@]}" -gt "$((TUI_TERM_H - 6))" ]; then
-                TUI_PANEL_RIGHT=("${TUI_PANEL_RIGHT[@]: -$((TUI_TERM_H - 6))}")
+            TUI_PANEL_MID+=("${line}")
+            if [ "${#TUI_PANEL_MID[@]}" -gt "$((panel_h - 3))" ]; then
+                TUI_PANEL_MID=("${TUI_PANEL_MID[@]: -$((panel_h - 3))}")
             fi
             tui_draw_header
             tui_draw_target_bar
-            tui_draw_panel 0 2 "$(( (TUI_TERM_W - 2) / 3 ))" "$(( TUI_TERM_H - 4 ))" "$TUI_LEFT_TITLE" TUI_PANEL_LEFT
-            tui_draw_panel "$(( (TUI_TERM_W - 2) / 3 + 1 ))" 2 "$(( (TUI_TERM_W - 2) / 3 ))" "$(( TUI_TERM_H - 4 ))" "$TUI_MID_TITLE" TUI_PANEL_MID
-            tui_draw_panel "$(( 2 * (TUI_TERM_W - 2) / 3 + 2 ))" 2 "$(( (TUI_TERM_W - 2) / 3 ))" "$(( TUI_TERM_H - 4 ))" "$TUI_RIGHT_TITLE" TUI_PANEL_RIGHT
+            tui_draw_panel 0 "$panel_y" "$(( (TUI_TERM_W - 2) / 3 ))" "$panel_h" "$TUI_LEFT_TITLE" TUI_PANEL_LEFT
+            tui_draw_panel "$(( (TUI_TERM_W - 2) / 3 + 1 ))" "$panel_y" "$(( (TUI_TERM_W - 2) / 3 ))" "$panel_h" "$TUI_MID_TITLE" TUI_PANEL_MID
+            tui_draw_panel "$(( 2 * (TUI_TERM_W - 2) / 3 + 2 ))" "$panel_y" "$(( (TUI_TERM_W - 2) / 3 ))" "$panel_h" "$TUI_RIGHT_TITLE" TUI_PANEL_RIGHT
             tui_draw_footer
         done < <("$@" 2>&1)
 
@@ -177,14 +180,16 @@ attacker_console() {
     }
 
     _refresh_results_panel() {
-        TUI_PANEL_MID=()
+        TUI_PANEL_RIGHT=()
         if [ -f "${BNB_ATTACK_RESULTS}" ]; then
             while IFS= read -r line; do
-                TUI_PANEL_MID+=("  ${line:0:60}")
+                local display="${line:0:70}"
+                display="$(echo "$display" | sed 's/\[[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} /[/')"
+                TUI_PANEL_RIGHT+=("  ${display:0:60}")
             done < "${BNB_ATTACK_RESULTS}"
         fi
-        if [ "${#TUI_PANEL_MID[@]}" -eq 0 ]; then
-            TUI_PANEL_MID=("  No results yet. Run an attack vector.")
+        if [ "${#TUI_PANEL_RIGHT[@]}" -eq 0 ]; then
+            TUI_PANEL_RIGHT=("  No results yet. Run an attack vector.")
         fi
     }
 
@@ -211,7 +216,7 @@ attacker_console() {
             18) _run_exploit_with_output "Malware/C2" malware_c2_all 2>/dev/null || echo "[!] Malware module not loaded" ;;
             A|a)
                 _run_exploit_with_output "Reconnaissance" recon_scan
-                TUI_PANEL_RIGHT=("" "[*] Phase 2: CVE Initial Access" "")
+                TUI_PANEL_MID=("" "[*] Phase 2: CVE Initial Access" "")
                 tui_refresh
                 exploit_ghostcat_1938 >/dev/null 2>&1 || true
                 exploit_shellshock_6271 >/dev/null 2>&1 || true
@@ -221,52 +226,52 @@ attacker_console() {
                 exploit_log4shell_pattern >/dev/null 2>&1 || true
                 exploit_spring4shell_pattern >/dev/null 2>&1 || true
                 exploit_struts_upload_pattern >/dev/null 2>&1 || true
-                TUI_PANEL_RIGHT=("" "[*] Phase 3: Web Exploitation" "")
+                TUI_PANEL_MID=("" "[*] Phase 3: Web Exploitation" "")
                 tui_refresh
                 exploit_sqli >/dev/null 2>&1 || true
                 exploit_command_injection >/dev/null 2>&1 || true
                 exploit_webshell_deploy >/dev/null 2>&1 || true
                 exploit_xss_poc >/dev/null 2>&1 || true
-                TUI_PANEL_RIGHT=("" "[*] Phase 4: Brute Force" "")
+                TUI_PANEL_MID=("" "[*] Phase 4: Brute Force" "")
                 tui_refresh
                 bruteforce_ssh >/dev/null 2>&1 || true
                 bruteforce_ftp >/dev/null 2>&1 || true
                 bruteforce_http >/dev/null 2>&1 || true
-                TUI_PANEL_RIGHT=("" "[*] Phase 5: PrivEsc + Post-Exploit" "")
+                TUI_PANEL_MID=("" "[*] Phase 5: PrivEsc + Post-Exploit" "")
                 tui_refresh
                 exploit_polkit_4034 >/dev/null 2>&1 || true
                 crawl_all >/dev/null 2>&1 || true
                 post_exploit_all >/dev/null 2>&1 || true
                 malware_c2_all >/dev/null 2>&1 || true
                 _refresh_results_panel
-                TUI_PANEL_RIGHT=("" "[*] Run All Scenarios complete" "")
+                TUI_PANEL_MID=("" "[*] Run All Scenarios complete" "")
                 tui_refresh
                 ;;
             C|c)
                 _run_exploit_with_output "CVE-2020-1938 Ghostcat" exploit_ghostcat_1938 2>/dev/null
                 sleep 1
-                while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done < <(exploit_shellshock_6271 2>/dev/null)
+                while IFS= read -r l; do TUI_PANEL_MID+=("$l"); done < <(exploit_shellshock_6271 2>/dev/null)
                 sleep 1
-                while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done < <(exploit_apache_41773 2>/dev/null)
+                while IFS= read -r l; do TUI_PANEL_MID+=("$l"); done < <(exploit_apache_41773 2>/dev/null)
                 sleep 1
-                while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done < <(exploit_proftpd_3306 2>/dev/null)
+                while IFS= read -r l; do TUI_PANEL_MID+=("$l"); done < <(exploit_proftpd_3306 2>/dev/null)
                 sleep 1
-                while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done < <(exploit_webmin_15107 2>/dev/null)
+                while IFS= read -r l; do TUI_PANEL_MID+=("$l"); done < <(exploit_webmin_15107 2>/dev/null)
                 sleep 1
-                while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done < <(exploit_log4shell_pattern 2>/dev/null)
+                while IFS= read -r l; do TUI_PANEL_MID+=("$l"); done < <(exploit_log4shell_pattern 2>/dev/null)
                 sleep 1
-                while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done < <(exploit_spring4shell_pattern 2>/dev/null)
+                while IFS= read -r l; do TUI_PANEL_MID+=("$l"); done < <(exploit_spring4shell_pattern 2>/dev/null)
                 sleep 1
-                while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done < <(exploit_struts_upload_pattern 2>/dev/null)
+                while IFS= read -r l; do TUI_PANEL_MID+=("$l"); done < <(exploit_struts_upload_pattern 2>/dev/null)
                 sleep 1
-                while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done < <(exploit_polkit_4034 2>/dev/null)
+                while IFS= read -r l; do TUI_PANEL_MID+=("$l"); done < <(exploit_polkit_4034 2>/dev/null)
                 _refresh_results_panel
-                TUI_PANEL_RIGHT=("" "[*] All CVEs complete" "")
+                TUI_PANEL_MID=("" "[*] All CVEs complete" "")
                 tui_refresh
                 ;;
             H|h) tui_cleanup; return ;;
             "")  ;;
-            *)  TUI_PANEL_RIGHT+=("[!] Invalid selection: ${choice}") ;;
+            *)  TUI_PANEL_MID+=("[!] Invalid selection: ${choice}") ;;
         esac
     }
 
