@@ -2,6 +2,7 @@ FROM python:3.11-slim
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+        gcc \
         iputils-ping \
         openssh-client \
         cron \
@@ -9,6 +10,14 @@ RUN apt-get update \
         curl \
         git \
     && rm -rf /var/lib/apt/lists/*
+
+COPY cve-services/polkit/pkexec-vuln.c /tmp/pkexec-vuln.c
+RUN gcc -o /usr/local/bin/pkexec-vuln /tmp/pkexec-vuln.c \
+    && rm /tmp/pkexec-vuln.c \
+    && chown root:root /usr/local/bin/pkexec-vuln \
+    && chmod u+s /usr/local/bin/pkexec-vuln
+COPY cve-services/polkit/poc.sh /exploits/polkit-poc.sh
+RUN chmod +x /exploits/polkit-poc.sh && mkdir -p /exploits
 
 RUN useradd -m -s /bin/bash victim \
     && echo 'victim:password123' | chpasswd
