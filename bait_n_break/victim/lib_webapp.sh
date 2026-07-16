@@ -31,7 +31,7 @@ webapp_compose_file() {
 }
 
 webapp_up() {
-    ( cd "${BNB_WEBAPP_DIR}" && _webapp_docker compose -f "$(webapp_compose_file)" up -d --build )
+    ( cd "${BNB_WEBAPP_DIR}" && _webapp_docker compose -f "$(webapp_compose_file)" build --no-cache && _webapp_docker compose -f "$(webapp_compose_file)" up -d --force-recreate )
 }
 
 webapp_down() {
