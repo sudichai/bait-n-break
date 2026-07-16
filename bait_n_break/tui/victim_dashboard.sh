@@ -1,10 +1,20 @@
 #!/usr/bin/env bash
-# Victim (Target) role dashboard: deploy, status, bait inventory, monitor,
-# malware simulation, teardown.
-# Sourced, not executed - deliberately does not set shell options (see
-# shared/config.sh for why).
+# Victim (Target) role dashboard — persistent ANSI TUI with live-updating
+# service status, vulnerability counts, and incident log.
+# Falls back to whiptail if terminal is too small.
+# Sourced, not executed.
 
 victim_dashboard() {
+    # shellcheck source=bait_n_break/tui/ansi_tui.sh
+    source "${BNB_ROOT}/bait_n_break/tui/ansi_tui.sh"
+
+    if ! tui_init; then
+        source "${BNB_ROOT}/bait_n_break/tui/victim_dashboard_fallback.sh"
+        _victim_dashboard_fallback
+        return
+    fi
+    trap 'tui_cleanup; monitor_stop 2>/dev/null' EXIT INT
+
     # shellcheck source=bait_n_break/victim/lib_bait.sh
     source "${BNB_ROOT}/bait_n_break/victim/lib_bait.sh"
     # shellcheck source=bait_n_break/victim/lib_webapp.sh
@@ -13,112 +23,182 @@ victim_dashboard() {
     source "${BNB_ROOT}/bait_n_break/victim/lib_monitor.sh"
     # shellcheck source=bait_n_break/victim/lib_malware_sim.sh
     source "${BNB_ROOT}/bait_n_break/victim/lib_malware_sim.sh"
-    # shellcheck source=bait_n_break/victim/lib_vuln_overview.sh
-    source "${BNB_ROOT}/bait_n_break/victim/lib_vuln_overview.sh"
+    # shellcheck source=bait_n_break/victim/lib_live_dashboard.sh
+    source "${BNB_ROOT}/bait_n_break/victim/lib_live_dashboard.sh"
 
-    # Background log-tailing jobs started by monitor_start() must not outlive
-    # the TUI process if the user exits without going through Teardown first.
-    trap 'monitor_stop 2>/dev/null' EXIT
+    TUI_LEFT_TITLE="SERVICES & CONNS"
+    TUI_MID_TITLE="VULNERABILITIES"
+    TUI_RIGHT_TITLE="INCIDENTS"
+    TUI_HEADER_TITLE="HACKER LABS"
+    TUI_HEADER_STATUS="Idle"
+    TUI_TARGET_TYPE="victim-lab"
 
-    _pause() {
-        echo ""
-        read -r -p "Press Enter to continue..." _
+    _build_services_panel() {
+        TUI_PANEL_LEFT=()
+        local -a svc_data
+        live_probe_services svc_data
+
+        local up_count=0
+        for entry in "${svc_data[@]}"; do
+            local name="${entry%%|*}"; local rest="${entry#*|}"
+            local port="${rest%%|*}"; rest="${rest#*|}"
+            local status="${rest%%|*}"; local conns="${rest##*|}"
+
+            if [ "$status" = "UP" ]; then
+                up_count=$((up_count + 1))
+                printf -v line '  [UP] %-14s :%s' "$name" "$port"
+                TUI_PANEL_LEFT+=("$line")
+                local conn_line="       ${conns} connection"
+                [ "$conns" != "1" ] && conn_line="${conn_line}s"
+                TUI_PANEL_LEFT+=("$conn_line")
+            else
+                printf -v line '  [DN] %-14s :%s' "$name" "$port"
+                TUI_PANEL_LEFT+=("$line")
+            fi
+        done
+
+        TUI_HEADER_STATUS="${up_count} svcs running"
+        TUI_TARGET_IP="$(live_get_hostname)"
+        TUI_TARGET_NAT="Bait: $(live_get_bait_count) files"
     }
 
-    while true; do
-        local choice
-        choice="$(ui_menu "Victim Dashboard" "Select an action:" \
-            "1" "Deploy / Start victim services" \
-            "2" "Service Status Panel" \
-            "3" "Vulnerability Overview" \
-            "4" "Honey-Asset Inventory" \
-            "5" "Access & Incident Monitor" \
-            "6" "Malware/Ransomware Simulation" \
-            "7" "Stop / Teardown" \
-            "8" "Back")" || break
+    _build_vulns_panel() {
+        TUI_PANEL_MID=()
+        local total=0
+        local total_active=0
 
+        while IFS='|' read -r phase count active; do
+            total=$((total + count))
+            local label="ACTIVE"
+            if [ "$active" = "0" ]; then
+                label="INACTIVE"
+            else
+                total_active=$((total_active + count))
+            fi
+            printf -v line '  %-12s %2d  [%s]' "$phase" "$count" "$label"
+            TUI_PANEL_MID+=("$line")
+        done < <(live_count_vulns)
+
+        TUI_PANEL_MID+=("")
+        printf -v line '  TOTAL: %d vulns active' "$total_active"
+        TUI_PANEL_MID+=("$line")
+    }
+
+    _build_incidents_panel() {
+        TUI_PANEL_RIGHT=()
+        while IFS= read -r line; do
+            TUI_PANEL_RIGHT+=("  ${line:0:60}")
+        done < <(live_tail_incidents 15)
+    }
+
+    _draw_modal() {
+        local title="$1" body="$2"
+        local w=52 h=10
+        local x=$(( (TUI_TERM_W - w) / 2 ))
+        local y=$(( (TUI_TERM_H - h) / 2 ))
+
+        tput cup "$y" "$x"
+        local i
+        printf '\033[7m %-*s \033[0m' "$((w-2))" " $title "
+        for ((i = 1; i < h - 1; i++)); do
+            tput cup $((y + i)) "$x"
+            printf ' %-*s ' "$((w-2))" ""
+        done
+        tput cup $((y + h - 1)) "$x"
+        printf '\033[7m %-*s \033[0m' "$((w-2))" " Press any key to close "
+
+        echo "$body" | head -$((h - 3)) | while IFS= read -r b_line; do
+            tput cup $((y + 1)) "$x"
+            printf ' %-*s ' "$((w-2))" "${b_line:0:$((w-4))}"
+            y=$((y + 1))
+        done
+
+        read -r -n1 -s _
+        tui_refresh
+    }
+
+    _malware_menu() {
+        local choice
+        tput cup $((TUI_TERM_H / 2 - 3)) $((TUI_TERM_W / 2 - 25))
+        printf '\033[7m %-48s \033[0m' " MALWARE SIMULATION "
+        tput cup $((TUI_TERM_H / 2 - 1)) $((TUI_TERM_W / 2 - 25)); printf '  [1] Drop EICAR test file'
+        tput cup $((TUI_TERM_H / 2))     $((TUI_TERM_W / 2 - 25)); printf '  [2] Run ransomware demo'
+        tput cup $((TUI_TERM_H / 2 + 1)) $((TUI_TERM_W / 2 - 25)); printf '  [3] Restore ransomware demo'
+        tput cup $((TUI_TERM_H / 2 + 2)) $((TUI_TERM_W / 2 - 25)); printf '  [4] Check C2 beacon'
+        tput cup $((TUI_TERM_H / 2 + 3)) $((TUI_TERM_W / 2 - 25)); printf '  [5] Back'
+
+        read -r -n1 choice
         case "$choice" in
-            1) victim_deploy ;;
-            2) victim_status ;;
-            3) clear; victim_vuln_overview; _pause ;;
-            4) victim_inventory ;;
-            5) victim_monitor_view ;;
-            6) victim_malware_menu ;;
-            7) victim_teardown ;;
-            8|"") break ;;
+            1) malware_drop_eicar; _draw_modal "EICAR" "EICAR test file dropped." ;;
+            2) malware_ransomware_demo_run; _draw_modal "Ransomware Demo" "Demo run complete. Files under ransomware_target/ are now *.locked." ;;
+            3) malware_ransomware_demo_restore; _draw_modal "Ransomware Demo" "Files restored." ;;
+            4)
+                if malware_c2_beacon_check; then
+                    _draw_modal "C2 Beacon" "Beacon check succeeded."
+                else
+                    _draw_modal "C2 Beacon" "Beacon check failed (is the web app running?)."
+                fi
+                ;;
+        esac
+    }
+
+    _refresh_all() {
+        _build_services_panel
+        _build_vulns_panel
+        _build_incidents_panel
+        tui_refresh
+    }
+
+    _refresh_all
+
+    while [ "$TUI_RUNNING" -eq 1 ]; do
+        local key
+        key="$(read -n1 -t2 key 2>/dev/null && echo "$key")" || { _refresh_all; continue; }
+
+        case "$key" in
+            D|d)
+                TUI_PANEL_RIGHT=("" "  [*] Deploying services..." "")
+                tui_refresh
+                bait_generate_all 2>/dev/null
+                if webapp_up 2>/dev/null; then
+                    state_set_status "deployed"
+                    monitor_start
+                    TUI_PANEL_RIGHT=("" "  [OK] Services deployed." "")
+                else
+                    TUI_PANEL_RIGHT=("" "  [ERR] Deploy failed. Is Docker running?" "")
+                fi
+                tui_refresh
+                sleep 2
+                _refresh_all
+                ;;
+            T|t)
+                TUI_PANEL_RIGHT=("" "  [*] Tearing down..." "")
+                tui_refresh
+                monitor_stop 2>/dev/null
+                webapp_down 2>/dev/null
+                state_reset 2>/dev/null
+                TUI_PANEL_RIGHT=("" "  [OK] Services stopped." "")
+                tui_refresh
+                sleep 2
+                _refresh_all
+                ;;
+            M|m)
+                _malware_menu
+                _refresh_all
+                ;;
+            B|b)
+                local bait_list
+                bait_list="$(state_manifest_list 2>/dev/null || echo "No bait files")"
+                _draw_modal "BAIT FILE INVENTORY" "$bait_list"
+                _refresh_all
+                ;;
+            F|f)
+                _refresh_all
+                ;;
+            Q|q|"ESC")
+                tui_cleanup
+                return
+                ;;
         esac
     done
-}
-
-victim_deploy() {
-    local bait_warning=""
-    bait_generate_all || bait_warning="Warning: one or more bait files failed to generate (see incident/log output for details).
-
-"
-    if webapp_up; then
-        state_set_status "deployed"
-        monitor_start
-        ui_msgbox "Deploy" "${bait_warning}Victim services deployed. Bait files generated and web app started."
-        victim_vuln_overview
-        read -r -p "Press Enter to return to dashboard..." _
-    else
-        ui_error "Deploy" "${bait_warning}Failed to start web app. Is Docker installed and running?"
-    fi
-}
-
-victim_status() {
-    local status ports compose_ps
-    status="$(state_get_status)"
-    ports="$(webapp_ports)"
-    compose_ps="$(webapp_status 2>&1)"
-    ui_msgbox "Service Status" "Status: ${status}
-
-Open ports:
-${ports}
-
-Containers:
-${compose_ps}"
-}
-
-victim_inventory() {
-    local list
-    list="$(state_manifest_list)"
-    ui_msgbox "Honey-Asset Inventory" "${list:-No bait files generated yet.}"
-}
-
-victim_monitor_view() {
-    ui_msgbox "Access & Incident Monitor" "$(state_incident_tail 30)"
-}
-
-victim_malware_menu() {
-    local choice
-    choice="$(ui_menu "Malware Simulation" "Select a demo:" \
-        "1" "Drop EICAR test file" \
-        "2" "Run ransomware demo" \
-        "3" "Restore ransomware demo" \
-        "4" "Check C2 beacon" \
-        "5" "Back")" || return
-    case "$choice" in
-        1) malware_drop_eicar; ui_msgbox "EICAR" "EICAR test file dropped." ;;
-        2) malware_ransomware_demo_run; ui_msgbox "Ransomware Demo" "Demo run complete. Files under ransomware_target/ are now *.locked." ;;
-        3) malware_ransomware_demo_restore; ui_msgbox "Ransomware Demo" "Files restored." ;;
-        4)
-            if malware_c2_beacon_check; then
-                ui_msgbox "C2 Beacon" "Beacon check succeeded."
-            else
-                ui_msgbox "C2 Beacon" "Beacon check failed (is the web app running?)."
-            fi
-            ;;
-    esac
-}
-
-victim_teardown() {
-    monitor_stop
-    if webapp_down; then
-        state_reset
-        ui_msgbox "Teardown" "Victim services stopped and state reset."
-    else
-        state_reset
-        ui_error "Teardown" "docker compose down reported an error, but state was reset anyway. Check Docker manually if containers may still be running."
-    fi
 }
