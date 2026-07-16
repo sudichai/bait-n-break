@@ -33,7 +33,7 @@ git clone https://github.com/sudichai/bait-n-break.git && cd bait-n-break && bas
 │  │                     │      │                         │    │
 │  │  Flask Web App      │      │  ANSI TUI Dashboard     │    │
 │  │  MySQL 5.7          │      │  Recon (nmap)           │    │
-│  │  SSH Decoy          │ ───▶ │  32 Attack Modules      │    │
+│  │  SSH Decoy          │  ->  │  32 Attack Modules      │    │
 │  │  FTP Decoy          │      │  9 CVE Exploits         │    │
 │  │  6 CVE Services     │      │  3 Attack Chains        │    │
 │  │  31 Bait Files      │      │  Results + Scoring      │    │
@@ -90,10 +90,10 @@ git clone https://github.com/sudichai/bait-n-break.git && cd bait-n-break && bas
 │                           KILL CHAIN MAP                                     │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│  🔍 RECON (5)                                                               │
+│  🔍 RECON (5)                                                               │ 
 │      /admin  /env  /debug  /robots.txt  /files/<area>/                       │
 │                                                                              │
-│  🔑 INITIAL ACCESS (14)                                                      │
+│  🔑 INITIAL ACCESS (14)                                                     │
 │      SQLi /login  |  Upload /upload  |  SSH :2222  |  FTP :2121             │
 │      MySQL :3306  |  6x CVE Services  |  3x Flask CVE patterns               │
 │                                                                              │
