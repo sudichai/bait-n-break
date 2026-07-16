@@ -80,7 +80,7 @@ attacker_console() {
     TUI_HEADER_TITLE="bait-n-break"
     TUI_CURSOR_VECTOR=0
 
-    local _C1=6 _C2=32 _C3=20 _C4=8
+    local _C1=6 _C2=38 _C3=14 _C4=8
 
     local -a VEC_DESC=()
     local -a VEC_OPSEC=()
@@ -113,8 +113,8 @@ attacker_console() {
         VEC_COUNT="${#vectors[@]}"
         local i=0
         for v in "${vectors[@]}"; do
-            local r="${v#*|}"
-            VEC_DESC[$i]="${r%%|*}"; VEC_OPSEC[$i]="${r##*|}"
+            local name="${v%%|*}"; local r="${v#*|}"
+            VEC_DESC[$i]="${name} - ${r%%|*}"; VEC_OPSEC[$i]="${r##*|}"
             VEC_RESULT[$i]="---"
             i=$((i + 1))
         done
@@ -138,6 +138,15 @@ attacker_console() {
                 VEC_RESULT[$i]="---"
             fi
         done
+    }
+
+    _probe_cve_ports() {
+        [ -z "${TARGET_IP:-}" ] && return
+        (exec 3<>/dev/tcp/${TARGET_IP}/8081) 2>/dev/null && VEC_RESULT[6]="[UP]"; exec 3<&- 2>/dev/null; exec 3>&- 2>/dev/null
+        (exec 3<>/dev/tcp/${TARGET_IP}/8082) 2>/dev/null && VEC_RESULT[7]="[UP]"; exec 3<&- 2>/dev/null; exec 3>&- 2>/dev/null
+        (exec 3<>/dev/tcp/${TARGET_IP}/${BNB_CVE_WEBMIN_PORT:-10000}) 2>/dev/null && VEC_RESULT[8]="[UP]"; exec 3<&- 2>/dev/null; exec 3>&- 2>/dev/null
+        (exec 3<>/dev/tcp/${TARGET_IP}/${BNB_CVE_TOMCAT_HTTP_PORT:-8083}) 2>/dev/null && VEC_RESULT[9]="[UP]"; exec 3<&- 2>/dev/null; exec 3>&- 2>/dev/null
+        (exec 3<>/dev/tcp/${TARGET_IP}/8080) 2>/dev/null && VEC_RESULT[10]="[UP]" && VEC_RESULT[11]="[UP]" && VEC_RESULT[12]="[UP]"; exec 3<&- 2>/dev/null; exec 3>&- 2>/dev/null
     }
 
     _draw_table() {
@@ -238,6 +247,14 @@ attacker_console() {
         _load_result_status
         rm -f "$tmpfile"
         TUI_HEADER_STATUS="Connected"
+
+        # pause so user can review output
+        TUI_PANEL_MID+=("" "--- Press any key to continue ---")
+        tui_draw_panel 0 4 "$exec_w" "$panel_h" "EXECUTE / LOGS" TUI_PANEL_MID
+        tui_draw_panel "$((exec_w + 1))" 4 "$vuln_w" "$panel_h" "VULNERABILITIES FOUND" TUI_PANEL_RIGHT
+        tui_draw_footer
+        read -r -n1 -s _
+
         clear
         _draw_table
     }
@@ -347,6 +364,7 @@ attacker_console() {
 
     TUI_FOOTER_TEXT="  <H> HOME | <T> TARGET | <A> RUN ALL | <C> RUN CVEs | <L> LOGS | <Q> BACK"
     _load_result_status
+    _probe_cve_ports
     _draw_table
 
     # --- Event Loop ---
