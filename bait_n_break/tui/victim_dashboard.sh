@@ -39,13 +39,16 @@ victim_dashboard() {
     fi
 
     echo -n "  [..] Starting Docker containers...      "
-    if webapp_up >/dev/null 2>&1; then
+    local deploy_out
+    deploy_out="$(webapp_up 2>&1)"
+    if [ $? -eq 0 ]; then
         echo -e "\r  [OK] Starting Docker containers...      "
     else
         echo -e "\r  [FAIL] Docker containers failed to start"
         echo ""
         echo "  Error details:"
-        webapp_up 2>&1 | tail -5 | while IFS= read -r l; do echo "    $l"; done
+        echo "$deploy_out" | tail -5 | while IFS= read -r l; do echo "    $l"; done
+        echo ""
         deploy_failed=1
     fi
 

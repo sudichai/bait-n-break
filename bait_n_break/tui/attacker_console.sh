@@ -216,7 +216,6 @@ attacker_console() {
 
         TUI_PANEL_MID=("" "[*] Executing: ${name}" "----------------------------------------")
         TUI_HEADER_STATUS="Attacking..."
-        trap 'TUI_HEADER_STATUS="Connected"' RETURN
 
         local tmpfile
         tmpfile="$(mktemp)"
