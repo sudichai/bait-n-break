@@ -109,6 +109,8 @@ attacker_console() {
             "Crawler / Bait Exfil|50-path wordlist scan|quiet"
             "Post-Exploitation|LFI/SSRF/XXE/IDOR/chains|loud"
             "Malware / C2|ransomware/beacon/deface|medium"
+            "--- RUN ALL SCENARIOS ---|kill-chain ordered Recon->Impact| "
+            "--- RUN ALL CVEs ---|all CVE exploits| "
         )
         VEC_COUNT="${#vectors[@]}"
         local i=0
@@ -125,7 +127,7 @@ attacker_console() {
             return
         fi
         local i
-        local -a key_map=( recon "bruteforce" "exploit_sqli" "exploit_command" "exploit_webshell" "exploit_xss" "exploit_apache" "exploit_shellshock" "exploit_webmin" "exploit_ghostcat" "exploit_log4shell" "exploit_spring4shell" "exploit_struts" "exploit_polkit" "crawler" "post_exploit" "malware" )
+        local -a key_map=( recon "bruteforce" "exploit_sqli" "exploit_command" "exploit_webshell" "exploit_xss" "exploit_apache" "exploit_shellshock" "exploit_webmin" "exploit_ghostcat" "exploit_log4shell" "exploit_spring4shell" "exploit_struts" "exploit_polkit" "crawler" "post_exploit" "malware" "runall" "runallcve" )
         for ((i = 0; i < VEC_COUNT; i++)); do
             local key="${key_map[$i]}"
             local found
@@ -293,6 +295,8 @@ attacker_console() {
             15) _run_exploit_with_output "Crawler" crawl_all 2>/dev/null || true ;;
             16) _run_exploit_with_output "Post-Exploit" post_exploit_all 2>/dev/null || true ;;
             17) _run_exploit_with_output "Malware/C2" malware_c2_all 2>/dev/null || true ;;
+            18) _execute_vector "A" ;;
+            19) _execute_vector "C" ;;
             A|a)
                 _run_exploit_with_output "Reconnaissance" recon_scan
                 TUI_PANEL_MID=("" "[*] Phase: CVE Init Access" "")
