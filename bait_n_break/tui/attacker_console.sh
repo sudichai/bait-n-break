@@ -80,14 +80,12 @@ attacker_console() {
 
     local _C1=6 _C2=32 _C3=20 _C4=8
 
-    local -a VEC_NAME=()
     local -a VEC_DESC=()
     local -a VEC_OPSEC=()
     local -a VEC_RESULT=()
     local VEC_COUNT=0
 
     _init_vectors() {
-        VEC_NAME=()
         VEC_DESC=()
         VEC_OPSEC=()
         VEC_RESULT=()
@@ -114,7 +112,7 @@ attacker_console() {
         VEC_COUNT="${#vectors[@]}"
         local i=0
         for v in "${vectors[@]}"; do
-            VEC_NAME[$i]="${v%%|*}"; local r="${v#*|}"
+            local r="${v#*|}"
             VEC_DESC[$i]="${r%%|*}"; VEC_OPSEC[$i]="${r##*|}"
             VEC_RESULT[$i]="---"
             i=$((i + 1))
@@ -184,7 +182,7 @@ attacker_console() {
     }
 
     _table_border() {
-        local y="$1" x="$2" w="$3" l="$4" m="$5" r="$6" c="$7"
+        local y="$1" x="$2" l="$4" m="$5" r="$6" c="$7"
         tput cup "$y" "$x"
         printf '%s' "$l"
         local i
@@ -218,6 +216,7 @@ attacker_console() {
 
         TUI_PANEL_MID=("" "[*] Executing: ${name}" "----------------------------------------")
         TUI_HEADER_STATUS="Attacking..."
+        trap 'TUI_HEADER_STATUS="Connected"' RETURN
 
         local tmpfile
         tmpfile="$(mktemp)"
