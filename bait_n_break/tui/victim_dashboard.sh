@@ -60,15 +60,7 @@ victim_dashboard() {
     if [ -n "$deploy_failed" ]; then
         while true; do
             echo ""
-            echo "  +-------------------------------------------+"
-            echo "  |          DOCKER NOT AVAILABLE              |"
-            echo "  +-------------------------------------------+"
-            echo ""
-            echo "  Docker daemon is not running or not installed."
-            echo ""
-            echo "  On Linux:   sudo systemctl start docker"
-            echo "  On WSL:     Start Docker Desktop on Windows"
-            echo "  On macOS:   Open Docker Desktop app"
+            echo "  Docker daemon is not running. Start Docker and retry."
             echo ""
             printf "  [R] Retry  [B] Back to menu: "
             read -r choice
