@@ -4,10 +4,25 @@
 # shared/config.sh for why).
 
 _webapp_docker() {
-    if docker ps >/dev/null 2>&1; then
-        docker "$@"
+    local -a cmd=()
+    if ! docker ps >/dev/null 2>&1; then
+        cmd=(sudo)
+    fi
+
+    if [ "$1" = "compose" ]; then
+        shift
+        if docker compose version >/dev/null 2>&1; then
+            cmd+=(docker compose)
+        elif command -v docker-compose >/dev/null 2>&1; then
+            cmd+=(docker-compose)
+        else
+            echo "ERROR: Neither docker compose nor docker-compose is available" >&2
+            return 1
+        fi
+        "${cmd[@]}" "$@"
     else
-        sudo docker "$@"
+        cmd+=(docker)
+        "${cmd[@]}" "$@"
     fi
 }
 
@@ -28,5 +43,5 @@ webapp_status() {
 }
 
 webapp_ports() {
-    ss -tulpn 2>/dev/null | grep -E ':(8080|2222|2121)\b' || echo "No matching ports found"
+    ss -tulpn 2>/dev/null | grep -E ':(8080|8081|8082|8083|2121|2122|2222|10000|8009)\b' || echo "No matching ports found"
 }
