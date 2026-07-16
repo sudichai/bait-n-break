@@ -57,22 +57,29 @@ victim_dashboard() {
     echo ""
     if [ -n "$deploy_failed" ]; then
         while true; do
-            echo "=============================================="
-            echo "  DEPLOY FAILED"
-            echo "  Is Docker installed and running?"
-            echo "=============================================="
+            echo ""
+            echo "  +-------------------------------------------+"
+            echo "  |          DOCKER NOT AVAILABLE              |"
+            echo "  +-------------------------------------------+"
+            echo ""
+            echo "  Docker daemon is not running or not installed."
+            echo ""
+            echo "  On Linux:   sudo systemctl start docker"
+            echo "  On WSL:     Start Docker Desktop on Windows"
+            echo "  On macOS:   Open Docker Desktop app"
             echo ""
             printf "  [R] Retry  [B] Back to menu: "
             read -r choice
             case "$choice" in
                 R|r)
                     echo ""
-                    echo -n "  [..] Starting Docker containers...      "
+                    echo -n "  [..] Trying Docker..."
                     docker ps >/dev/null 2>&1 || {
-                        echo -e "\r  [..] Attempting to start Docker daemon..."
-                        sudo systemctl start docker 2>/dev/null || sudo service docker start 2>/dev/null || true
-                        sleep 2
+                        sudo systemctl start docker 2>/dev/null
+                        sudo service docker start 2>/dev/null
+                        sleep 3
                     }
+                    echo -n "  [..] Starting containers...              "
                     if webapp_up >/dev/null 2>&1; then
                         echo -e "\r  [OK] Starting Docker containers...      "
                         state_set_status "deployed"
