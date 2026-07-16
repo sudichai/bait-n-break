@@ -61,7 +61,7 @@ attacker_console() {
     }
 
     _hl() {
-        local row="$1" y=$((4+row)) x=1
+        local row="$1" y=$((5+row)) x=1
         local panel_w=$(( (TUI_TERM_W-2)/3 )); local line="${TUI_PANEL_LEFT[$row]:-}"
         tput cup "$y" "$x"; printf '\033[7m %-*s \033[0m' "$((panel_w-2))" "${line:0:$((panel_w-2))}"
     }
@@ -113,7 +113,7 @@ attacker_console() {
 
     # --- Init ---
     if [ -f "${BNB_TARGET_FILE}" ]; then
-        local s; s="$(cat "${BNB_TARGET_FILE}")"; TUI_TARGET_IP="$(echo "$s"|cut -d' ' -f1)"; TUI_TARGET_NAT="${TUI_TARGET_IP}"; TUI_HEADER_STATUS="Connected"
+        local s; s="$(cat "${BNB_TARGET_FILE}")"; TUI_TARGET_IP="$(echo "$s"|cut -d' ' -f1)"; TARGET_PORT="$(echo "$s"|cut -d' ' -f2)"; TARGET_IP="$TUI_TARGET_IP"; TUI_TARGET_NAT="${TUI_TARGET_IP}"; TUI_HEADER_STATUS="Connected"
     fi
     TUI_FOOTER_TEXT="  <UP/DOWN> Navigate  <ENTER> Execute  <A> Run All  <C> Run CVEs  <T> Target  <Q> Back"
     _draw_vectors; tui_refresh; _hl "$TUI_CURSOR_VECTOR"
@@ -133,7 +133,9 @@ attacker_console() {
             [1-9]) local n="$key"; [ "$n" -ge 1 ] 2>/dev/null && [ "$n" -le 9 ] 2>/dev/null && { TUI_CURSOR_VECTOR=$((n-1)); tui_refresh; _hl "$TUI_CURSOR_VECTOR"; _exec "${vectors[$((n-1))]}" _exec_one "$n"; } ;;
             A|a) _exec "Run All Scenarios" _exec_all ;;
             C|c) _exec "Run All CVEs" _exec_cves ;;
-            T|t) tui_cleanup; target_prompt || true; tui_init || return; TUI_HEADER_STATUS="Connected"; _draw_vectors; tui_refresh; _hl "$TUI_CURSOR_VECTOR" ;;
+            T|t) tui_cleanup; target_prompt || true; tui_init || return; TUI_HEADER_STATUS="Connected"
+                if [ -f "${BNB_TARGET_FILE}" ]; then s="$(cat "${BNB_TARGET_FILE}")"; TUI_TARGET_IP="$(echo "$s"|cut -d' ' -f1)"; TARGET_PORT="$(echo "$s"|cut -d' ' -f2)"; TARGET_IP="$TUI_TARGET_IP"; TUI_TARGET_NAT="${TUI_TARGET_IP}"; fi
+                _draw_vectors; tui_refresh; _hl "$TUI_CURSOR_VECTOR" ;;
             H|h|ESC|Q|q) tui_cleanup; return ;;
         esac
     done
