@@ -280,42 +280,55 @@ attacker_console() {
             18) _run_exploit_with_output "Malware/C2" malware_c2_all 2>/dev/null || true ;;
             A|a)
                 _run_exploit_with_output "Reconnaissance" recon_scan
-                exploit_ghostcat_1938 >/dev/null 2>&1 || true
-                exploit_shellshock_6271 >/dev/null 2>&1 || true
-                exploit_apache_41773 >/dev/null 2>&1 || true
-                exploit_proftpd_3306 >/dev/null 2>&1 || true
-                exploit_webmin_15107 >/dev/null 2>&1 || true
-                exploit_log4shell_pattern >/dev/null 2>&1 || true
-                exploit_spring4shell_pattern >/dev/null 2>&1 || true
-                exploit_struts_upload_pattern >/dev/null 2>&1 || true
-                exploit_sqli >/dev/null 2>&1 || true
-                exploit_command_injection >/dev/null 2>&1 || true
-                exploit_webshell_deploy >/dev/null 2>&1 || true
-                exploit_xss_poc >/dev/null 2>&1 || true
-                bruteforce_ssh >/dev/null 2>&1 || true
-                bruteforce_ftp >/dev/null 2>&1 || true
-                bruteforce_http >/dev/null 2>&1 || true
-                exploit_polkit_4034 >/dev/null 2>&1 || true
-                crawl_all >/dev/null 2>&1 || true
-                post_exploit_all >/dev/null 2>&1 || true
-                malware_c2_all >/dev/null 2>&1 || true
+                TUI_PANEL_MID=("" "[*] Phase: CVE Init Access" "")
+                tui_draw_panel 0 4 "$(( (TUI_TERM_W - 2) / 3 * 2 + 1 ))" "$(( TUI_TERM_H - 5 ))" "EXECUTE / LOGS" TUI_PANEL_MID
+                timeout 15 exploit_ghostcat_1938 >/dev/null 2>&1 || true
+                timeout 15 exploit_shellshock_6271 >/dev/null 2>&1 || true
+                timeout 15 exploit_apache_41773 >/dev/null 2>&1 || true
+                timeout 15 exploit_proftpd_3306 >/dev/null 2>&1 || true
+                timeout 15 exploit_webmin_15107 >/dev/null 2>&1 || true
+                timeout 15 exploit_log4shell_pattern >/dev/null 2>&1 || true
+                timeout 15 exploit_spring4shell_pattern >/dev/null 2>&1 || true
+                timeout 15 exploit_struts_upload_pattern >/dev/null 2>&1 || true
+                TUI_PANEL_MID=("" "[*] Phase: Web Exploitation" "")
+                tui_draw_panel 0 4 "$(( (TUI_TERM_W - 2) / 3 * 2 + 1 ))" "$(( TUI_TERM_H - 5 ))" "EXECUTE / LOGS" TUI_PANEL_MID
+                timeout 15 exploit_sqli >/dev/null 2>&1 || true
+                timeout 15 exploit_command_injection >/dev/null 2>&1 || true
+                timeout 15 exploit_webshell_deploy >/dev/null 2>&1 || true
+                timeout 15 exploit_xss_poc >/dev/null 2>&1 || true
+                TUI_PANEL_MID=("" "[*] Phase: Brute Force" "")
+                tui_draw_panel 0 4 "$(( (TUI_TERM_W - 2) / 3 * 2 + 1 ))" "$(( TUI_TERM_H - 5 ))" "EXECUTE / LOGS" TUI_PANEL_MID
+                timeout 15 bruteforce_ssh >/dev/null 2>&1 || true
+                timeout 15 bruteforce_ftp >/dev/null 2>&1 || true
+                timeout 15 bruteforce_http >/dev/null 2>&1 || true
+                TUI_PANEL_MID=("" "[*] Phase: PrivEsc + Post-Exploit" "")
+                tui_draw_panel 0 4 "$(( (TUI_TERM_W - 2) / 3 * 2 + 1 ))" "$(( TUI_TERM_H - 5 ))" "EXECUTE / LOGS" TUI_PANEL_MID
+                timeout 15 exploit_polkit_4034 >/dev/null 2>&1 || true
+                timeout 15 crawl_all >/dev/null 2>&1 || true
+                timeout 15 post_exploit_all >/dev/null 2>&1 || true
+                timeout 15 malware_c2_all >/dev/null 2>&1 || true
                 _refresh_results_panel
                 _load_result_status
                 TUI_HEADER_STATUS="Connected"
+                clear
                 _draw_table
                 ;;
             C|c)
-                exploit_ghostcat_1938 >/dev/null 2>&1 || true
-                exploit_shellshock_6271 >/dev/null 2>&1 || true
-                exploit_apache_41773 >/dev/null 2>&1 || true
-                exploit_proftpd_3306 >/dev/null 2>&1 || true
-                exploit_webmin_15107 >/dev/null 2>&1 || true
-                exploit_log4shell_pattern >/dev/null 2>&1 || true
-                exploit_spring4shell_pattern >/dev/null 2>&1 || true
-                exploit_struts_upload_pattern >/dev/null 2>&1 || true
-                exploit_polkit_4034 >/dev/null 2>&1 || true
+                TUI_PANEL_MID=("" "[*] Running All CVEs..." "")
+                tui_draw_panel 0 4 "$(( (TUI_TERM_W - 2) / 3 * 2 + 1 ))" "$(( TUI_TERM_H - 5 ))" "EXECUTE / LOGS" TUI_PANEL_MID
+                timeout 15 exploit_ghostcat_1938 >/dev/null 2>&1 || true
+                timeout 15 exploit_shellshock_6271 >/dev/null 2>&1 || true
+                timeout 15 exploit_apache_41773 >/dev/null 2>&1 || true
+                timeout 15 exploit_proftpd_3306 >/dev/null 2>&1 || true
+                timeout 15 exploit_webmin_15107 >/dev/null 2>&1 || true
+                timeout 15 exploit_log4shell_pattern >/dev/null 2>&1 || true
+                timeout 15 exploit_spring4shell_pattern >/dev/null 2>&1 || true
+                timeout 15 exploit_struts_upload_pattern >/dev/null 2>&1 || true
+                timeout 15 exploit_polkit_4034 >/dev/null 2>&1 || true
                 _refresh_results_panel
                 _load_result_status
+                TUI_HEADER_STATUS="Connected"
+                clear
                 _draw_table
                 ;;
             H|h) tui_cleanup; return ;;
