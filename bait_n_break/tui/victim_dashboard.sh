@@ -32,8 +32,7 @@ victim_dashboard() {
     local need_dl=""
     for f in \
         "${cve_dir}/proftpd-1.3.5/proftpd-1.3.5.tar.gz" \
-        "${cve_dir}/webmin-1.890/webmin_1.890_all.deb" \
-        "${cve_dir}/tomcat-ghostcat/apache-tomcat-9.0.30.tar.gz"; do
+        "${cve_dir}/webmin-1.890/webmin_1.890_all.deb"; do
         [ -f "$f" ] || need_dl=1
     done
     if [ -n "$need_dl" ]; then
