@@ -24,6 +24,7 @@ import hashlib
 import json
 import os
 import pickle
+import socket
 import sqlite3
 import subprocess
 import time
@@ -829,6 +830,133 @@ def api_version():
         "database": "SQLite 3",
         "debug": app.config["DEBUG"],
         "hostname": os.uname().nodename,
+    })
+
+
+# --- CVE-2021-44228 Pattern: Log4Shell-style JNDI injection ---
+
+@app.route("/api/log", methods=["POST"])
+def api_log():
+    data = request.get_json(silent=True) or {}
+    message = data.get("message", "")
+    level = data.get("level", "INFO")
+
+    import re
+    jndi_pattern = re.compile(r'\$\{jndi:(ldap|ldaps|rmi|dns)://([^}]+)\}')
+    resolved = []
+
+    for match in jndi_pattern.finditer(message):
+        proto = match.group(1)
+        target = match.group(2)
+        host = target.split("/")[0].split(":")[0]
+        port_str = target.split(":")[1].split("/")[0] if ":" in target.split("/")[0] else ""
+        port = int(port_str) if port_str.isdigit() else (389 if proto == "ldap" else 636)
+
+        try:
+            socket.setdefaulttimeout(5)
+            addr_info = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+            resolved.append({
+                "protocol": proto,
+                "target": target,
+                "host": host,
+                "port": port,
+                "resolved": str(addr_info)
+            })
+        except Exception as exc:
+            resolved.append({
+                "protocol": proto,
+                "target": target,
+                "error": str(exc)
+            })
+
+    return jsonify({
+        "level": level,
+        "message": message,
+        "jndi_lookups": len(resolved),
+        "resolved": resolved
+    })
+
+
+# --- CVE-2022-22965 Pattern: Spring4Shell-style parameter binding ---
+
+class ModuleConfig:
+    def __init__(self):
+        self._attrs = {}
+        self.pattern = ""
+        self.suffix = ".log"
+        self.directory = "/tmp"
+    def __setattr__(self, name, value):
+        if name.startswith("_"):
+            super().__setattr__(name, value)
+        else:
+            self._attrs[name] = value
+    def __getattr__(self, name):
+        if name.startswith("_"):
+            return super().__getattribute__(name)
+        return self._attrs.get(name, "")
+
+@app.route("/api/server/config", methods=["POST"])
+def api_server_config():
+    data = request.get_json(silent=True) or request.form.to_dict()
+    config = ModuleConfig()
+    results = {}
+
+    for key, value in data.items():
+        parts = key.split(".")
+        obj = config
+        for part in parts[:-1]:
+            if hasattr(obj, part):
+                obj = getattr(obj, part)
+            else:
+                setattr(obj, part, ModuleConfig())
+                obj = getattr(obj, part)
+        setattr(obj, parts[-1], value)
+
+        if "pattern" in key and "pipeline" in key:
+            log_pattern = str(value)
+            log_file = config.suffix if config.suffix else ".log"
+            log_path = os.path.join(config.directory if config.directory else "/tmp",
+                                    f"access{log_file}")
+            try:
+                with open(log_path, "w") as fh:
+                    fh.write(log_pattern + "\n")
+                results["file_written"] = log_path
+                results["content"] = log_pattern[:200]
+            except Exception as exc:
+                results["error"] = str(exc)
+
+    results["config"] = {k: v for k, v in config._attrs.items()}
+    return jsonify(results)
+
+
+# --- CVE-2023-50164 Pattern: Struts2-style path traversal upload ---
+
+@app.route("/api/upload-archive", methods=["GET", "POST"])
+def api_upload_archive():
+    if request.method == "GET":
+        return """
+        <form method="post" enctype="multipart/form-data">
+          <input name="file" type="file">
+          <input name="filename" placeholder="../../shell/pwned.sh">
+          <button type="submit">Upload Archive</button>
+        </form>
+        <p>Struts2-style upload: filename parameter controls destination path</p>
+        """
+    uploaded = request.files.get("file")
+    if not uploaded:
+        return jsonify({"error": "no file provided"}), 400
+    user_filename = request.form.get("filename", uploaded.filename or "archive.bin")
+    dest_dir = os.path.join(UPLOAD_DIR, "archive")
+    os.makedirs(dest_dir, exist_ok=True)
+    dest_path = os.path.join(dest_dir, user_filename)
+    dest_dirname = os.path.dirname(dest_path)
+    os.makedirs(dest_dirname, exist_ok=True)
+    uploaded.save(dest_path)
+    return jsonify({
+        "status": "uploaded",
+        "input_filename": user_filename,
+        "resolved_path": dest_path,
+        "hint": "Try filename=../../shell/pwned.sh to write outside archive/"
     })
 
 
