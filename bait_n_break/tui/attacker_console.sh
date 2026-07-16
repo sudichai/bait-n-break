@@ -86,17 +86,14 @@ attacker_console() {
         local tmpfile
         tmpfile="$(mktemp)"
 
-        # Run the command and capture output in background
-        {
-            "$@" 2>&1
-        } | while IFS= read -r line; do
+        while IFS= read -r line; do
             echo "$line" >> "$tmpfile"
             TUI_PANEL_RIGHT+=("${line}")
             if [ "${#TUI_PANEL_RIGHT[@]}" -gt "$((TUI_TERM_H - 6))" ]; then
                 TUI_PANEL_RIGHT=("${TUI_PANEL_RIGHT[@]: -$((TUI_TERM_H - 6))}")
             fi
             tui_refresh
-        done
+        done < <("$@" 2>&1)
 
         _refresh_results_panel
         rm -f "$tmpfile"
@@ -140,31 +137,31 @@ attacker_console() {
                 _run_exploit_with_output "Reconnaissance" recon_scan
                 TUI_PANEL_RIGHT=("" "[*] Phase 2: CVE Initial Access" "")
                 tui_refresh
-                exploit_ghostcat_1938 2>/dev/null
-                exploit_shellshock_6271 2>/dev/null
-                exploit_apache_41773 2>/dev/null
-                exploit_proftpd_3306 2>/dev/null
-                exploit_webmin_15107 2>/dev/null
-                exploit_log4shell_pattern 2>/dev/null
-                exploit_spring4shell_pattern 2>/dev/null
-                exploit_struts_upload_pattern 2>/dev/null
+                exploit_ghostcat_1938 >/dev/null 2>&1 || true
+                exploit_shellshock_6271 >/dev/null 2>&1 || true
+                exploit_apache_41773 >/dev/null 2>&1 || true
+                exploit_proftpd_3306 >/dev/null 2>&1 || true
+                exploit_webmin_15107 >/dev/null 2>&1 || true
+                exploit_log4shell_pattern >/dev/null 2>&1 || true
+                exploit_spring4shell_pattern >/dev/null 2>&1 || true
+                exploit_struts_upload_pattern >/dev/null 2>&1 || true
                 TUI_PANEL_RIGHT=("" "[*] Phase 3: Web Exploitation" "")
                 tui_refresh
-                exploit_sqli 2>/dev/null
-                exploit_command_injection 2>/dev/null
-                exploit_webshell_deploy 2>/dev/null
-                exploit_xss_poc 2>/dev/null
+                exploit_sqli >/dev/null 2>&1 || true
+                exploit_command_injection >/dev/null 2>&1 || true
+                exploit_webshell_deploy >/dev/null 2>&1 || true
+                exploit_xss_poc >/dev/null 2>&1 || true
                 TUI_PANEL_RIGHT=("" "[*] Phase 4: Brute Force" "")
                 tui_refresh
-                bruteforce_ssh 2>/dev/null
-                bruteforce_ftp 2>/dev/null
-                bruteforce_http 2>/dev/null
+                bruteforce_ssh >/dev/null 2>&1 || true
+                bruteforce_ftp >/dev/null 2>&1 || true
+                bruteforce_http >/dev/null 2>&1 || true
                 TUI_PANEL_RIGHT=("" "[*] Phase 5: PrivEsc + Post-Exploit" "")
                 tui_refresh
-                exploit_polkit_4034 2>/dev/null
-                crawl_all 2>/dev/null
-                post_exploit_all 2>/dev/null
-                malware_c2_all 2>/dev/null
+                exploit_polkit_4034 >/dev/null 2>&1 || true
+                crawl_all >/dev/null 2>&1 || true
+                post_exploit_all >/dev/null 2>&1 || true
+                malware_c2_all >/dev/null 2>&1 || true
                 _refresh_results_panel
                 TUI_PANEL_RIGHT=("" "[*] Run All Scenarios complete" "")
                 tui_refresh
@@ -172,21 +169,21 @@ attacker_console() {
             C|c)
                 _run_exploit_with_output "CVE-2020-1938 Ghostcat" exploit_ghostcat_1938 2>/dev/null
                 sleep 1
-                exploit_shellshock_6271 2>/dev/null | while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done
+                while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done < <(exploit_shellshock_6271 2>/dev/null)
                 sleep 1
-                exploit_apache_41773 2>/dev/null | while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done
+                while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done < <(exploit_apache_41773 2>/dev/null)
                 sleep 1
-                exploit_proftpd_3306 2>/dev/null | while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done
+                while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done < <(exploit_proftpd_3306 2>/dev/null)
                 sleep 1
-                exploit_webmin_15107 2>/dev/null | while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done
+                while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done < <(exploit_webmin_15107 2>/dev/null)
                 sleep 1
-                exploit_log4shell_pattern 2>/dev/null | while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done
+                while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done < <(exploit_log4shell_pattern 2>/dev/null)
                 sleep 1
-                exploit_spring4shell_pattern 2>/dev/null | while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done
+                while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done < <(exploit_spring4shell_pattern 2>/dev/null)
                 sleep 1
-                exploit_struts_upload_pattern 2>/dev/null | while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done
+                while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done < <(exploit_struts_upload_pattern 2>/dev/null)
                 sleep 1
-                exploit_polkit_4034 2>/dev/null | while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done
+                while IFS= read -r l; do TUI_PANEL_RIGHT+=("$l"); done < <(exploit_polkit_4034 2>/dev/null)
                 _refresh_results_panel
                 TUI_PANEL_RIGHT=("" "[*] All CVEs complete" "")
                 tui_refresh

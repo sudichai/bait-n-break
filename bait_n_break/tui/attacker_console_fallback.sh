@@ -4,7 +4,7 @@
 # Sourced, not executed - deliberately does not set shell options (see
 # shared/config.sh for why).
 
-attacker_console() {
+_attacker_console_fallback() {
     source "${BNB_ROOT}/bait_n_break/attacker/lib_results.sh"
     source "${BNB_ROOT}/bait_n_break/attacker/lib_target.sh"
     source "${BNB_ROOT}/bait_n_break/attacker/lib_recon.sh"
