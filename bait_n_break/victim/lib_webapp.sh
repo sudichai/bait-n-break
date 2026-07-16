@@ -34,7 +34,7 @@ webapp_up() {
     local attempt=1 max=3
     while [ "$attempt" -le "$max" ]; do
         ( cd "${BNB_WEBAPP_DIR}" && _webapp_docker compose -f "$(webapp_compose_file)" pull 2>/dev/null )
-        ( cd "${BNB_WEBAPP_DIR}" && _webapp_docker compose -f "$(webapp_compose_file)" up -d --build --force-recreate ) && return 0
+        ( cd "${BNB_WEBAPP_DIR}" && _webapp_docker compose -f "$(webapp_compose_file)" --profile cve up -d --build --force-recreate ) && return 0
         echo "  [retry ${attempt}/${max}] Docker pull/build failed, retrying in 5s..."
         sleep 5
         attempt=$((attempt + 1))

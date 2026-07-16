@@ -49,9 +49,10 @@ services:
       - "21100-21110:21100-21110"
     restart: unless-stopped
 
-  # --- CVE Training Services ---
+  # --- CVE Training Services (profile: cve) ---
 
   apache-41773:
+    profiles: ["cve"]
     build:
       context: cve-services/apache-2.4.49
       dockerfile: Dockerfile
@@ -60,6 +61,7 @@ services:
     restart: unless-stopped
 
   shellshock:
+    profiles: ["cve"]
     build:
       context: cve-services/shellshock
       dockerfile: Dockerfile
@@ -68,6 +70,7 @@ services:
     restart: unless-stopped
 
   proftpd-3306:
+    profiles: ["cve"]
     build:
       context: cve-services/proftpd-1.3.5
       dockerfile: Dockerfile
@@ -77,6 +80,7 @@ services:
     restart: unless-stopped
 
   webmin-15107:
+    profiles: ["cve"]
     build:
       context: cve-services/webmin-1.890
       dockerfile: Dockerfile
@@ -85,6 +89,7 @@ services:
     restart: unless-stopped
 
   tomcat-ghostcat:
+    profiles: ["cve"]
     build:
       context: cve-services/tomcat-ghostcat
       dockerfile: Dockerfile

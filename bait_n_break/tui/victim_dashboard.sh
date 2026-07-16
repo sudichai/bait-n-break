@@ -48,11 +48,10 @@ victim_dashboard() {
             [ -f "$f" ] || need_dl=1
         done
         if [ -n "$need_dl" ]; then
-            echo "  [FAIL] Could not download all dependencies"
-            read -r -p "  Press Enter to return to menu..." _
-            return
+            echo "  [WARN] Some CVE deps unavailable — continuing without them"
+        else
+            echo "  [OK] CVE dependencies downloaded"
         fi
-        echo "  [OK] CVE dependencies downloaded"
         echo ""
     fi
 
