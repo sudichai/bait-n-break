@@ -25,21 +25,21 @@ git clone https://github.com/sudichai/bait-n-break.git && cd bait-n-break && bas
 ## 🎯 What's Inside
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│                    bait-n-break Lab                       │
-│                                                          │
-│  ┌───────────────────┐    ┌───────────────────────────┐  │
-│  │  VICTIM (Target)  │    │   ATTACKER (Kali)         │  │
-│  │                   │    │                           │  │
-│  │  🐍 Flask Web App │    │  🖥️  ANSI TUI Dashboard   │  │
-│  │  🛢️  MySQL 5.7    │    │  🔍 Recon (nmap)          │  │
-│  │  🔓 SSH Decoy     │───▶│  💥 25 Attack Modules     │  │
-│  │  🔓 FTP Decoy     │    │  🧬 9 CVE Exploits        │  │
-│  │  🐳 6 CVE Services│    │  🔗 3 Attack Chains       │  │
-│  │  🍯 31 Bait Files │    │  📊 Results + Scoring     │  │
-│  │  📡 Live Monitor  │    │                           │  │
-│  └───────────────────┘    └───────────────────────────┘  │
-└──────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                      bait-n-break Lab                        │
+│                                                              │
+│  ┌─────────────────────┐      ┌─────────────────────────┐    │
+│  │   VICTIM (Target)   │      │    ATTACKER (Kali)      │    │
+│  │                     │      │                         │    │
+│  │  Flask Web App      │      │  ANSI TUI Dashboard     │    │
+│  │  MySQL 5.7          │      │  Recon (nmap)           │    │
+│  │  SSH Decoy          │ ───▶ │  32 Attack Modules      │    │
+│  │  FTP Decoy          │      │  9 CVE Exploits         │    │
+│  │  6 CVE Services     │      │  3 Attack Chains        │    │
+│  │  31 Bait Files      │      │  Results + Scoring      │    │
+│  │  Live Monitor       │      │                         │    │
+│  └─────────────────────┘      └─────────────────────────┘    │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -86,35 +86,45 @@ git clone https://github.com/sudichai/bait-n-break.git && cd bait-n-break && bas
 ### 🧬 Vulnerabilities — Kill-Chain Mapped (68+)
 
 ```
-┌────────────────────────────────────────────────────────────────────────────┐
-│  KILL CHAIN MAP                                                            │
-│                                                                            │
-│  🔍 RECON (5)   ▸  🔑 INIT ACCESS (14)  ▸  ⚡ EXECUTION (8)               │
-│  /admin               SQLi /login             CMDi /ping                   │
-│  /env                 Upload /upload          LFI /read                    │
-│  /debug               SSH :2222               SSRF /fetch                  │
-│  /robots.txt          FTP :2121               XXE /parse                   │
-│  /files/<area>/       MySQL :3306             Pickle deser /pickle         │
-│                       6x CVE Services         Open Redirect /redirect      │
-│                       3x Flask CVE patterns   File Download /download      │
-│                                                                            │
-│  👑 PRIV ESC (4)   ▸  📌 PERSIST (2)      ▸  🔐 CRED ACCESS (5)           │
-│  SUID find/awk/curl    SSH key /persist       IDOR /users/<id>             │
-│  Sudo misconfig        Cron /persist          LFI /etc/passwd+shadow       │
-│  Docker socket                               JWT none-alg /api/auth        │
-│  CVE-2021-4034 Polkit                         /env leak                    │
-│                                                                            │
-│  📂 COLLECT (6)    ▸  🕸️ WEB VULNS (9)    ▸  📤 EXFIL (2)                │
-│  Bait files           CSRF 2x                 DNS tunnel /exfil/dns        │
-│  Reflected XSS        Mass Assignment          HTTP exfil /exfil/http       │
-│  Stored XSS           Race Condition                                       │
-│                        Weak Crypto            🦠 C2 (1)  🔥 IMPACT (5)     │
-│                        Session Fixation        /c2/beacon  Ransomware      │
-│                        Param Pollution                     Defacement      │
-│                        CORS wildcard                       DB Wipe         │
-│                        Missing headers                     Log Clear       │
-│                        No rate limit                                       │
-└────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                           KILL CHAIN MAP                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  🔍 RECON (5)                                                               │
+│      /admin  /env  /debug  /robots.txt  /files/<area>/                       │
+│                                                                              │
+│  🔑 INITIAL ACCESS (14)                                                      │
+│      SQLi /login  |  Upload /upload  |  SSH :2222  |  FTP :2121             │
+│      MySQL :3306  |  6x CVE Services  |  3x Flask CVE patterns               │
+│                                                                              │
+│  ⚡ EXECUTION (8)                                                            │
+│      CMDi /ping  |  LFI /read  |  SSRF /fetch  |  XXE /parse                │
+│      Pickle deser  |  Open Redirect  |  File Download                        │
+│                                                                              │
+│  👑 PRIVILEGE ESCALATION (4)                                                 │
+│      SUID find/awk/curl  |  Sudo misconfig  |  Docker socket escape          │
+│      CVE-2021-4034 Polkit pkexec LPE                                         │
+│                                                                              │
+│  📌 PERSISTENCE (2)                                                          │
+│      SSH key injection /persist/ssh-key  |  Cron backdoor /persist/cron      │
+│                                                                              │
+│  🔐 CREDENTIAL ACCESS (5)                                                    │
+│      IDOR /users/<id>  |  LFI /etc/passwd+shadow  |  JWT none-alg            │
+│      /env leak  |  Stack trace info disclosure                               │
+│                                                                              │
+│  📂 COLLECTION (6)                                                           │
+│      Bait files /files/<area>/  |  Reflected XSS  |  Stored XSS              │
+│                                                                              │
+│  🕸️ WEB APP VULNS (9)                                                       │
+│      CSRF 2x  |  Mass Assignment  |  Race Condition  |  Weak Crypto          │
+│      Session Fixation  |  Param Pollution  |  CORS wildcard                  │
+│      Missing security headers  |  No rate limiting                           │
+│                                                                              │
+│  📤 EXFILTRATION (2)  |  🦠 C2 (1)  |  🔥 IMPACT (5)                        │
+│      DNS tunnel /exfil/dns   |   /c2/beacon   |   Ransomware  Defacement    │
+│      HTTP exfil /exfil/http  |                |   DB Wipe     Log Clear      │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -124,18 +134,18 @@ git clone https://github.com/sudichai/bait-n-break.git && cd bait-n-break && bas
 **🖥️ Custom ANSI TUI**: persistent 3-panel dashboard with live streaming output and keyboard shortcuts.
 
 ```
-┌──────────────────┬──────────────────┬──────────────────┐
-│ ATTACK VECTORS   │ VULNS FOUND      │ EXECUTE / LOGS   │
-│                  │                  │                  │
-│ [1] Recon        │ > CVE-2021-41773 │ Executing...     │
-│ [2] Brute Force  │ > Shellshock     │ Payload sent...  │
-│ [3] SQLi         │ > Webmin RCE     │ Result: SUCCESS  │
-│ [4] CMDi         │ > SQLi bypass    │                  │
-│ [5] Webshell     │                  │                  │
-│ ...              │                  │                  │
-│ [A] Run All      │                  │                  │
-│ [C] Run All CVEs │                  │                  │
-└──────────────────┴──────────────────┴──────────────────┘
+┌─────────────────────┬─────────────────────┬─────────────────────┐
+│  ATTACK VECTORS     │  VULNS FOUND        │  EXECUTE / LOGS     │
+│                     │                     │                     │
+│  [1] Recon          │  > CVE-2021-41773   │  Executing...       │
+│  [2] Brute Force    │  > Shellshock RCE   │  Payload sent...    │
+│  [3] SQL Injection  │  > Webmin RCE       │  Result: SUCCESS    │
+│  [4] CMD Injection  │  > SQLi bypass      │                     │
+│  [5] Webshell       │                     │                     │
+│  ...                │                     │                     │
+│  [A] Run All        │                     │                     │
+│  [C] Run All CVEs   │                     │                     │
+└─────────────────────┴─────────────────────┴─────────────────────┘
 ```
 
 | 🔢 # | ⚔️ Module | ⛓️ Phase | 🫧 OPSEC | 🛠️ Method |
