@@ -79,7 +79,7 @@ attacker_console() {
     TUI_RIGHT_TITLE="VULNERABILITIES FOUND"
     TUI_HEADER_TITLE="HACKER LABS"
     TUI_FOOTER_TEXT="  <H> HOME | <T> TARGET | <A> RUN ALL | <C> RUN CVEs | <L> LOGS | <Q> BACK"
-    TUI_USE_ASCII_HEADER=1
+    TUI_USE_ASCII_HEADER=0
     TUI_CURSOR_VECTOR=0
 
     _load_target_state() {
@@ -143,7 +143,7 @@ attacker_console() {
         if [ "$TUI_CURSOR_VECTOR" -ge 0 ] 2>/dev/null && [ "$TUI_CURSOR_VECTOR" -lt 18 ] 2>/dev/null; then
             local panel_w=$(( (TUI_TERM_W - 2) / 3 ))
             local x=1
-            local y=$(( 11 + TUI_CURSOR_VECTOR ))
+            local y=$(( 3 + TUI_CURSOR_VECTOR ))
             local line="${TUI_PANEL_LEFT[$TUI_CURSOR_VECTOR]:-}"
             tput cup "$y" "$x"
             printf '\033[7m %-*s \033[0m' "$((panel_w - 2))" "${line:0:$((panel_w - 2))}"
@@ -153,8 +153,12 @@ attacker_console() {
     _run_exploit_with_output() {
         local name="$1"
         shift
-        local panel_y=10
+        local panel_y=4
         local panel_h=$(( TUI_TERM_H - panel_y - 1 ))
+        local panel_w=$(( (TUI_TERM_W - 2) / 3 ))
+        local exec_w=$(( panel_w * 2 + 1 ))  # wide: spans left + mid
+        local vuln_w=$panel_w
+
         TUI_PANEL_MID=("" "[*] Executing: ${name}" "----------------------------------------")
 
         local tmpfile
@@ -168,13 +172,13 @@ attacker_console() {
             fi
             tui_draw_header
             tui_draw_target_bar
-            tui_draw_panel 0 "$panel_y" "$(( (TUI_TERM_W - 2) / 3 ))" "$panel_h" "$TUI_LEFT_TITLE" TUI_PANEL_LEFT
-            tui_draw_panel "$(( (TUI_TERM_W - 2) / 3 + 1 ))" "$panel_y" "$(( (TUI_TERM_W - 2) / 3 ))" "$panel_h" "$TUI_MID_TITLE" TUI_PANEL_MID
-            tui_draw_panel "$(( 2 * (TUI_TERM_W - 2) / 3 + 2 ))" "$panel_y" "$(( (TUI_TERM_W - 2) / 3 ))" "$panel_h" "$TUI_RIGHT_TITLE" TUI_PANEL_RIGHT
+            tui_draw_panel 0 "$panel_y" "$exec_w" "$panel_h" "$TUI_MID_TITLE" TUI_PANEL_MID
+            tui_draw_panel "$((exec_w + 1))" "$panel_y" "$vuln_w" "$panel_h" "$TUI_RIGHT_TITLE" TUI_PANEL_RIGHT
             tui_draw_footer
         done < <("$@" 2>&1)
 
         _refresh_results_panel
+        _build_vector_menu
         rm -f "$tmpfile"
         tui_refresh
     }
