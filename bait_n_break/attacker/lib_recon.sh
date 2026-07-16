@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Reconnaissance: full port/service scan against TARGET_IP. Uses nmap with
-# service detection across common ports, or a hand-rolled /dev/tcp probe
-# for a wide set of ports as fallback.
+# Reconnaissance: full port/service scan against TARGET_IP. Uses traffic_nmap_scan
+# with service detection across ports 1-10000, or a hand-rolled /dev/tcp probe
+# for a wide set of common ports as fallback.
 # Sourced, not executed - deliberately does not set shell options (see
 # shared/config.sh for why).
 
@@ -17,29 +17,46 @@ recon_probe_port() {
 }
 
 recon_scan() {
-    target_ensure_set || { echo "[recon] No target set."; return 1; }
-    echo ""
-    echo "=============================================="
-    echo "  RECONNAISSANCE: ${TARGET_IP}"
-    echo "=============================================="
-    echo ""
-    local open=0 total=0
+    target_ensure_set || return 1
+
+    mission_brief "Reconnaissance" "TA0043" "TA0043 — RECONNAISSANCE" "quiet"
+
+    phase_banner "RECONNAISSANCE" "TA0043"
+
+    local GREEN='\033[1;32m'
+    local BOLD='\033[1m'
+    local RESET='\033[0m'
+
     if command -v nmap >/dev/null 2>&1; then
-        echo "[*] Running nmap service scan (top 1000 ports)..."
+        printf "${GREEN}root@kali:~#${RESET} ${BOLD}nmap -sV -sC -p 1-10000 --min-rate 200 %s${RESET}\n" "${TARGET_IP}"
         echo ""
-        local nmap_out
-        nmap_out="$(nmap -sV -sC --min-rate 200 --max-rate 500 -T4 "${TARGET_IP}" 2>&1)"
-        echo "$nmap_out"
-        open="$(echo "$nmap_out" | grep -c '/tcp\s\+open\b' || true)"
+
+        local scan_output
+        scan_output="$(traffic_nmap_scan "${TARGET_IP}" "1-10000" 2>&1)"
+        echo "$scan_output"
+
+        local open
+        open="$(echo "$scan_output" | grep -c '/tcp\s\+open\b' || true)"
 
         local open_ports
-        open_ports="$(echo "$nmap_out" | grep '/tcp\s\+open\b' | awk '{print $1}' | tr '\n' ' ')"
+        open_ports="$(echo "$scan_output" | grep '/tcp\s\+open\b' | awk '{print $1}' | tr '\n' ' ')"
         echo ""
         echo "[*] Open ports discovered: ${open_ports:-none}"
         echo "[*] Total open: ${open}"
+
+        if [ "$open" -gt 0 ]; then
+            results_record_simple "recon" "SUCCESS" "quiet" "${open} open port(s) on ${TARGET_IP}"
+        else
+            results_record_simple "recon" "FAILED" "quiet" "no open ports found on ${TARGET_IP}"
+        fi
     else
+        printf "${GREEN}root@kali:~#${RESET} ${BOLD}nmap -sV -sC -p 1-10000 --min-rate 200 %s${RESET}\n" "${TARGET_IP}"
+        echo ""
         echo "[*] nmap not found, probing ${#BNB_RECON_PORTS[@]} common ports via /dev/tcp..."
         echo ""
+
+        local open=0
+        local total=0
         local p
         for p in "${BNB_RECON_PORTS[@]}"; do
             total=$((total + 1))
@@ -60,14 +77,14 @@ recon_scan() {
             recon_probe_port "${TARGET_IP}" 8080 2>/dev/null || web_port=80
             curl -s -I "http://${TARGET_IP}:${web_port}/" 2>/dev/null | head -10 || true
         fi
+
+        if [ "$open" -gt 0 ]; then
+            results_record_simple "recon" "SUCCESS" "quiet" "${open} open port(s) on ${TARGET_IP}"
+        else
+            results_record_simple "recon" "FAILED" "quiet" "no open ports found on ${TARGET_IP}"
+        fi
     fi
-    echo ""
-    echo "=============================================="
-    echo "  RECON COMPLETE"
-    echo "=============================================="
-    if [ "$open" -gt 0 ]; then
-        results_record "recon" "SUCCESS" "quiet" "scan completed: ${open} open port(s) on ${TARGET_IP}"
-    else
-        results_record "recon" "FAILED" "quiet" "no open ports found on ${TARGET_IP}"
-    fi
+
+    ops "quiet"
+    debrief_card "RECONNAISSANCE" "TA0043" "quiet"
 }

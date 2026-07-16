@@ -1,51 +1,52 @@
 #!/usr/bin/env bash
-# Leaked-file crawler: iterates a wordlist of candidate paths against the
-# target, and for any directory-listing page it finds, also enumerates and
-# reports the files listed inside it. Adds realistic request pacing.
+# Leaked-file crawler: iterates candidate paths from payloads_crawler_paths
+# against the target. Uses engine integration for mission briefing, WAF tracking,
+# progress bar, OPSEC, and debrief cards.
 # Sourced, not executed - deliberately does not set shell options (see
 # shared/config.sh for why).
 
 crawl_leaked_files() {
-    target_ensure_set || { echo "[crawler] No target set."; return 1; }
+    target_ensure_set || return 1
+    _engine_reset_waf
+
     local base="http://${TARGET_IP}:${TARGET_PORT}"
-    local wordlist="${BNB_ROOT}/bait_n_break/attacker/wordlists/common_paths.txt"
-    local body_file found=0 scanned=0 total
-    total="$(wc -l < "$wordlist")"
-    body_file="$(mktemp)"
-    echo ""
-    echo "=============================================="
-    echo "  BAIT FILE CRAWLER: ${base}"
-    echo "  Wordlist: ${total} paths"
-    echo "=============================================="
-    echo ""
-    while IFS= read -r path; do
+    local total="${#payloads_crawler_paths[@]}"
+    local found=0 scanned=0
+    local GREEN='\033[1;32m'
+    local RESET='\033[0m'
+
+    mission_brief "Bait File Crawler" "T1083" "TA0009 — COLLECTION" "quiet"
+    phase_banner "COLLECTION" "TA0009"
+    fake_shell "gobuster dir -u http://\${TARGET_IP}:\${TARGET_PORT} -w /usr/share/wordlists/dirb/common.txt 2>/dev/null || true"
+
+    for path in "${payloads_crawler_paths[@]}"; do
         [ -z "$path" ] && continue
         scanned=$((scanned + 1))
         local url="${base}${path}"
         local code
-        printf "    [%3d/%3d] %s " "$scanned" "$total" "$path"
-        code="$(curl -s -o "$body_file" -w '%{http_code}' --connect-timeout 3 "$url")"
+
+        code="$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 3 "$url")"
+
+        waf_tracker "$code" "${path}"
+
+        bar "$scanned" "$total"
+
         if [ "$code" = "200" ]; then
-            echo "-> FOUND (${code})"
+            printf "  ${GREEN}FOUND:${RESET} %s\n" "$path"
             found=$((found + 1))
-            if [[ "$path" == /files/*/ ]]; then
-                grep -oE "href='[^']+'" "$body_file" | sed -E "s/^href='//;s/'\$//" | while IFS= read -r link; do
-                    echo "        -> ${base}${link}"
-                done
-            fi
-        else
-            echo "-> ${code}"
         fi
+
         sleep 0.3
-    done < "$wordlist"
-    rm -f "$body_file"
-    echo ""
-    echo "=============================================="
-    echo "  CRAWL COMPLETE: ${found} path(s) found out of ${scanned} scanned"
-    echo "=============================================="
+    done
+
+    printf '\n'
+
     if [ "$found" -gt 0 ]; then
-        results_record "crawler" "VULNERABLE" "quiet" "${found} leaked path(s) found via wordlist"
+        results_record_simple "crawler" "SUCCESS" "quiet" "${found} paths found"
     else
-        results_record "crawler" "FAILED" "quiet" "no leaked paths found via wordlist"
+        results_record_simple "crawler" "FAILED" "quiet" "0 paths found"
     fi
+
+    ops "quiet"
+    debrief_card "BAIT CRAWLER" "T1083" "quiet"
 }

@@ -1,0 +1,218 @@
+#!/usr/bin/env bash
+# Core rendering engine - typewriter, fake_shell, waf_tracker, progress bar, tool signatures, mission briefing
+
+BNB_ENGINE_WAF_BLOCKED=0
+BNB_ENGINE_WAF_BYPASSED=0
+BNB_ENGINE_PAYLOAD_TOTAL=0
+
+_engine_reset_waf() {
+    BNB_ENGINE_WAF_BLOCKED=0
+    BNB_ENGINE_WAF_BYPASSED=0
+    BNB_ENGINE_PAYLOAD_TOTAL=0
+}
+
+twi() {
+    local text="$1"
+    local delay_ms="${2:-30}"
+    local delay_sec
+    delay_sec="$(printf '%.2f' "$(awk "BEGIN {print $delay_ms/1000}")" 2>/dev/null || printf '0.03')"
+    local i
+    for ((i = 0; i < ${#text}; i++)); do
+        printf '%s' "${text:$i:1}"
+        sleep "$delay_sec" 2>/dev/null || sleep 0.03
+    done
+}
+
+fake_shell() {
+    local cmd="$1"
+    local GREEN='\033[1;32m'
+    local BOLD='\033[1m'
+    local RESET='\033[0m'
+    printf "${GREEN}root@kali:~#${RESET} ${BOLD}%s${RESET}\n" "$cmd"
+    eval "$cmd"
+}
+
+phase_banner() {
+    local phase_name="$1"
+    local tactic_id="$2"
+    local BLUE_BG='\033[44m'
+    local WHITE_BOLD='\033[1;37m'
+    local RESET='\033[0m'
+    local line
+    line="  ${phase_name}  [${tactic_id}]  "
+    local width=${#line}
+    local i
+    printf '\n'
+    for ((i = 0; i < width; i++)); do
+        printf "${BLUE_BG} ${RESET}"
+    done
+    printf '\n'
+    printf "${BLUE_BG}${WHITE_BOLD}%s${RESET}\n" "$line"
+    for ((i = 0; i < width; i++)); do
+        printf "${BLUE_BG} ${RESET}"
+    done
+    printf '\n\n'
+}
+
+waf_tracker() {
+    local http_code="$1"
+    local payload_desc="$2"
+    local GREEN='\033[1;32m'
+    local RED='\033[1;31m'
+    local YELLOW='\033[1;33m'
+    local DIM='\033[1;30m'
+    local RESET='\033[0m'
+
+    BNB_ENGINE_PAYLOAD_TOTAL=$((BNB_ENGINE_PAYLOAD_TOTAL + 1))
+
+    case "$http_code" in
+        2*)
+            BNB_ENGINE_WAF_BYPASSED=$((BNB_ENGINE_WAF_BYPASSED + 1))
+            printf "${GREEN}[BYPASSED]${RESET}  %s  →  %s\n" "$payload_desc" "HTTP ${http_code}"
+            ;;
+        403|406)
+            BNB_ENGINE_WAF_BLOCKED=$((BNB_ENGINE_WAF_BLOCKED + 1))
+            printf "${RED}[BLOCKED ]${RESET}  %s  →  %s\n" "$payload_desc" "HTTP ${http_code}"
+            ;;
+        5*)
+            printf "${YELLOW}[ERROR   ]${RESET}  %s  →  %s\n" "$payload_desc" "HTTP ${http_code}"
+            ;;
+        *)
+            printf "${DIM}[CODE    ]${RESET}  %s  →  %s\n" "$payload_desc" "HTTP ${http_code}"
+            ;;
+    esac
+}
+
+bar() {
+    local current="$1"
+    local total="$2"
+    local width=20
+    local pct filled empty i fill_str empty_str
+    pct=$((current * 100 / total))
+    filled=$((current * width / total))
+    empty=$((width - filled))
+
+    fill_str=""
+    for ((i = 0; i < filled; i++)); do
+        fill_str="${fill_str}#"
+    done
+
+    empty_str=""
+    for ((i = 0; i < empty; i++)); do
+        empty_str="${empty_str}-"
+    done
+
+    printf '\r[%s%s] %d%%' "$fill_str" "$empty_str" "$pct"
+}
+
+tool_sig() {
+    local tool="$1"
+    case "$tool" in
+        nmap_sV)
+            printf '%s\n' "Mozilla/5.0 (compatible; Nmap Scripting Engine; https://nmap.org/book/nse.html)"
+            ;;
+        sqlmap)
+            printf '%s\n' "sqlmap/1.8#stable (https://sqlmap.org)"
+            ;;
+        hydra_ssh)
+            printf '%s\n' "Mozilla/5.0 (Hydra v9.5)"
+            ;;
+        gobuster)
+            printf '%s\n' "gobuster/3.6"
+            ;;
+        nikto)
+            printf '%s\n' "Mozilla/5.0 (Nikto/2.5.0)"
+            ;;
+        metasploit)
+            printf '%s\n' "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)"
+            ;;
+        *)
+            printf '%s\n' "curl/8.0"
+            ;;
+    esac
+}
+
+ops() {
+    local level="$1"
+    local GREEN='\033[1;32m'
+    local YELLOW='\033[1;33m'
+    local RED='\033[1;31m'
+    local RESET='\033[0m'
+
+    case "$level" in
+        quiet)
+            printf "${GREEN}[OPSEC: quiet]${RESET}\n"
+            ;;
+        medium)
+            printf "${YELLOW}[OPSEC: medium]${RESET}\n"
+            ;;
+        loud)
+            printf "${RED}[OPSEC: loud]${RESET}\n"
+            ;;
+        *)
+            printf "${YELLOW}[OPSEC: medium]${RESET}\n"
+            ;;
+    esac
+}
+
+mission_brief() {
+    local title="$1"
+    local technique="$2"
+    local tactic="$3"
+    local ops_risk="$4"
+    local DIM='\033[1;30m'
+    local WHITE_BOLD='\033[1;37m'
+    local RESET='\033[0m'
+    local target_display="${TARGET_IP:-not set}:${TARGET_PORT:-8080}"
+
+    printf '\n'
+    printf "${DIM}╔══════════════════════════════════════════════╗${RESET}\n"
+    printf "${DIM}║${RESET} ${WHITE_BOLD}%-44s${RESET} ${DIM}║${RESET}\n" "$title"
+    printf "${DIM}╠══════════════════════════════════════════════╣${RESET}\n"
+    printf "${DIM}║${RESET}  Technique : %-30s ${DIM}║${RESET}\n" "$technique"
+    printf "${DIM}║${RESET}  Tactic    : %-30s ${DIM}║${RESET}\n" "$tactic"
+    printf "${DIM}║${RESET}  Target    : %-30s ${DIM}║${RESET}\n" "$target_display"
+    printf "${DIM}║${RESET}  OPSEC Risk: %-30s ${DIM}║${RESET}\n" "$ops_risk"
+    printf "${DIM}╚══════════════════════════════════════════════╝${RESET}\n"
+    printf '\n'
+}
+
+debrief_card() {
+    local status="$1"
+    local technique="$2"
+    local ops_risk="$3"
+    local DIM='\033[1;30m'
+    local GREEN='\033[1;32m'
+    local RED='\033[1;31m'
+    local YELLOW='\033[1;33m'
+    local WHITE_BOLD='\033[1;37m'
+    local RESET='\033[0m'
+    local status_color
+    local waf_summary
+
+    case "$status" in
+        SUCCESS|VULNERABLE)
+            status_color="$GREEN"
+            ;;
+        FAILED|BLOCKED)
+            status_color="$RED"
+            ;;
+        *)
+            status_color="$YELLOW"
+            ;;
+    esac
+
+    waf_summary="blocked:${BNB_ENGINE_WAF_BLOCKED}  bypassed:${BNB_ENGINE_WAF_BYPASSED}  total:${BNB_ENGINE_PAYLOAD_TOTAL}"
+
+    printf '\n'
+    printf "${DIM}╔══════════════════════════════════════════════╗${RESET}\n"
+    printf "${DIM}║${RESET}  ${status_color}Status : %-32s${RESET} ${DIM}║${RESET}\n" "$status"
+    printf "${DIM}╠══════════════════════════════════════════════╣${RESET}\n"
+    printf "${DIM}║${RESET}  Technique : %-30s ${DIM}║${RESET}\n" "$technique"
+    printf "${DIM}║${RESET}  OPSEC Risk: %-30s ${DIM}║${RESET}\n" "$ops_risk"
+    printf "${DIM}║${RESET}  WAF Stats : %-30s ${DIM}║${RESET}\n" "$waf_summary"
+    printf "${DIM}╚══════════════════════════════════════════════╝${RESET}\n"
+    printf '\n'
+
+    _engine_reset_waf
+}
