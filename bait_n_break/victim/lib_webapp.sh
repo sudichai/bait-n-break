@@ -31,7 +31,15 @@ webapp_compose_file() {
 }
 
 webapp_up() {
-    ( cd "${BNB_WEBAPP_DIR}" && _webapp_docker compose -f "$(webapp_compose_file)" up -d --build --force-recreate )
+    local attempt=1 max=3
+    while [ "$attempt" -le "$max" ]; do
+        ( cd "${BNB_WEBAPP_DIR}" && _webapp_docker compose -f "$(webapp_compose_file)" pull 2>/dev/null )
+        ( cd "${BNB_WEBAPP_DIR}" && _webapp_docker compose -f "$(webapp_compose_file)" up -d --build --force-recreate ) && return 0
+        echo "  [retry ${attempt}/${max}] Docker pull/build failed, retrying in 5s..."
+        sleep 5
+        attempt=$((attempt + 1))
+    done
+    return 1
 }
 
 webapp_down() {
