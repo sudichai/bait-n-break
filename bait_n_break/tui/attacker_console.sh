@@ -25,26 +25,25 @@ attacker_console() {
 
     results_init
 
-    crawl_all() {
-        crawl_leaked_files 2>/dev/null || true
-    }
-
-    malware_c2_all() {
-        c2_beacon_check 2>/dev/null || true
-        ransomware_trigger 2>/dev/null || true
-    }
-
+    crawl_all() { crawl_leaked_files 2>/dev/null || true; }
+    bruteforce_all() { bruteforce_ssh 2>/dev/null || true; bruteforce_ftp 2>/dev/null || true; bruteforce_http 2>/dev/null || true; }
+    malware_c2_all() { c2_beacon_check 2>/dev/null || true; ransomware_trigger 2>/dev/null || true; }
     post_exploit_all() {
-        exploit_lfi 2>/dev/null || true
-        exploit_ssrf 2>/dev/null || true
-        exploit_xxe 2>/dev/null || true
-        exploit_idor 2>/dev/null || true
-        exploit_pickle_deser 2>/dev/null || true
-        exploit_docker_escape 2>/dev/null || true
-        exploit_persist_ssh 2>/dev/null || true
-        exploit_persist_cron 2>/dev/null || true
-        exploit_cred_harvest 2>/dev/null || true
-        exploit_dns_exfil 2>/dev/null || true
+        exploit_lfi 2>/dev/null || true; exploit_ssrf 2>/dev/null || true
+        exploit_xxe 2>/dev/null || true; exploit_idor 2>/dev/null || true
+        exploit_pickle_deser 2>/dev/null || true; exploit_docker_escape 2>/dev/null || true
+        exploit_persist_ssh 2>/dev/null || true; exploit_persist_cron 2>/dev/null || true
+        exploit_cred_harvest 2>/dev/null || true; exploit_dns_exfil 2>/dev/null || true
+    }
+
+    # --- Run a bash FUNCTION with timeout (subshell+PID kill) ---
+    _run_fn() {
+        local fn="$1" timeout_secs="${2:-30}"
+        ( "$fn" ) & local _pid=$!
+        ( sleep "$timeout_secs"; kill "$_pid" 2>/dev/null ) & local _killer=$!
+        wait "$_pid" 2>/dev/null; local _rc=$?
+        kill "$_killer" 2>/dev/null; wait "$_killer" 2>/dev/null
+        return "$_rc"
     }
 
     # --- Part B: _build_menu() ---
@@ -73,8 +72,7 @@ attacker_console() {
 
         local tag label
         for item in "${vectors[@]}"; do
-            tag="${item%%|*}"
-            label="${item##*|}"
+            tag="${item%%|*}"; label="${item##*|}"
             status="$(results_status_for "$tag" 2>/dev/null || true)"
             case "$status" in
                 VULNERABLE|SUCCESS) prefix="[+] " ;;
@@ -95,8 +93,7 @@ attacker_console() {
 
     # --- Part C: _do() helper ---
     _do() {
-        local t="$1"
-        shift
+        local t="$1"; shift
         clear
         echo "=============================================="
         echo "  [bait-n-break]  ${t}  Target: ${TARGET_IP}"
@@ -109,20 +106,9 @@ attacker_console() {
     }
 
     # --- Part D: _all(), _cves(), _results() helpers ---
-    _all() {
-        _do "Run All Scenarios (Kill-Chain)" _exec_all
-    }
-
-    _cves() {
-        _do "Run All CVEs" _exec_cves
-    }
-
-    _results() {
-        clear
-        results_short_summary 2>/dev/null || true
-        echo ""
-        read -r -p "Press Enter to return to menu..." _
-    }
+    _all() { _do "RUN ALL SCENARIOS (Kill-Chain)" _exec_all; }
+    _cves() { _do "RUN ALL CVEs" _exec_cves; }
+    _results() { clear; results_short_summary 2>/dev/null || true; echo ""; read -r -p "Press Enter to return to menu..." _; }
 
     # --- Part E: Main loop ---
     while true; do
@@ -131,19 +117,19 @@ attacker_console() {
 
         case "$choice" in
             1)  _do "Reconnaissance (nmap scan)" recon_scan ;;
-            2)  _do "Brute Force (SSH/FTP/HTTP)" bash -c "bruteforce_ssh 2>/dev/null || true; bruteforce_ftp 2>/dev/null || true; bruteforce_http 2>/dev/null || true" ;;
+            2)  _do "Brute Force (SSH/FTP/HTTP)" bruteforce_all ;;
             3)  _do "SQL Injection (auth bypass)" exploit_sqli ;;
             4)  _do "Command Injection (RCE)" exploit_command_injection ;;
             5)  _do "Webshell Deploy (upload)" exploit_webshell_deploy ;;
             6)  _do "XSS PoC (reflected + stored)" exploit_xss_poc ;;
-            7)  _do "CVE-2021-41773 Apache Path Traversal" bash -c "exploit_apache_41773 2>/dev/null || true" ;;
-            8)  _do "CVE-2014-6271 Shellshock Bash CGI" bash -c "exploit_shellshock_6271 2>/dev/null || true" ;;
-            9)  _do "CVE-2019-15107 Webmin RCE" bash -c "exploit_webmin_15107 2>/dev/null || true" ;;
-            10) _do "CVE-2020-1938 Tomcat Ghostcat (AJP LFI)" bash -c "exploit_ghostcat_1938 2>/dev/null || true" ;;
-            11) _do "Log4Shell Pattern (JNDI Injection)" bash -c "exploit_log4shell_pattern 2>/dev/null || true" ;;
-            12) _do "Spring4Shell Pattern (Binding)" bash -c "exploit_spring4shell_pattern 2>/dev/null || true" ;;
-            13) _do "Struts2 Pattern (Upload -> RCE)" bash -c "exploit_struts_upload_pattern 2>/dev/null || true" ;;
-            14) _do "CVE-2021-4034 Polkit LPE (pkexec)" bash -c "exploit_polkit_4034 2>/dev/null || true" ;;
+            7)  _do "CVE-2021-41773 Apache Path Traversal" exploit_apache_41773 ;;
+            8)  _do "CVE-2014-6271 Shellshock Bash CGI" exploit_shellshock_6271 ;;
+            9)  _do "CVE-2019-15107 Webmin RCE" exploit_webmin_15107 ;;
+            10) _do "CVE-2020-1938 Tomcat Ghostcat (AJP LFI)" exploit_ghostcat_1938 ;;
+            11) _do "Log4Shell Pattern (JNDI Injection)" exploit_log4shell_pattern ;;
+            12) _do "Spring4Shell Pattern (Binding)" exploit_spring4shell_pattern ;;
+            13) _do "Struts2 Pattern (Upload -> RCE)" exploit_struts_upload_pattern ;;
+            14) _do "CVE-2021-4034 Polkit LPE (pkexec)" exploit_polkit_4034 ;;
             15) _do "Crawler — Bait File Exfiltration" crawl_all ;;
             16) _do "Post-Exploitation (10 techniques)" post_exploit_all ;;
             17) _do "Malware / C2 Simulation" malware_c2_all ;;
@@ -172,65 +158,56 @@ _exec_one() {
     case "$1" in
         1)  recon_scan ;;
         2)  bruteforce_ssh 2>/dev/null || true; bruteforce_ftp 2>/dev/null || true; bruteforce_http 2>/dev/null || true ;;
-        3)  exploit_sqli ;;
-        4)  exploit_command_injection ;;
-        5)  exploit_webshell_deploy ;;
-        6)  exploit_xss_poc ;;
-        7)  exploit_apache_41773 2>/dev/null || true ;;
-        8)  exploit_shellshock_6271 2>/dev/null || true ;;
-        9)  exploit_webmin_15107 2>/dev/null || true ;;
-        10) exploit_ghostcat_1938 2>/dev/null || true ;;
-        11) exploit_log4shell_pattern 2>/dev/null || true ;;
-        12) exploit_spring4shell_pattern 2>/dev/null || true ;;
-        13) exploit_struts_upload_pattern 2>/dev/null || true ;;
-        14) exploit_polkit_4034 2>/dev/null || true ;;
-        15) crawl_all 2>/dev/null || true ;;
-        16) post_exploit_all 2>/dev/null || true ;;
-        17) malware_c2_all 2>/dev/null || true ;;
+        3)  exploit_sqli ;;  4) exploit_command_injection ;;  5) exploit_webshell_deploy ;;  6) exploit_xss_poc ;;
+        7)  exploit_apache_41773 ;;  8) exploit_shellshock_6271 ;;  9) exploit_webmin_15107 ;;
+        10) exploit_ghostcat_1938 ;;  11) exploit_log4shell_pattern ;;  12) exploit_spring4shell_pattern ;;
+        13) exploit_struts_upload_pattern ;;  14) exploit_polkit_4034 ;;
+        15) crawl_all ;;  16) post_exploit_all ;;  17) malware_c2_all ;;
     esac
 }
 
 _exec_all() {
-    local fn
+    _run_all_phase() {
+        local phase="$1" tactic="$2"; shift 2
+        printf '\n'
+        phase_banner "$phase" "$tactic"
+        local fn
+        for fn in "$@"; do
+            printf '  [*] %s ...' "$fn"
+            if ( "$fn" ) &>/dev/null & local _pid=$!; then
+                ( sleep 30; kill "$_pid" 2>/dev/null ) & local _killer=$!
+                wait "$_pid" 2>/dev/null
+                kill "$_killer" 2>/dev/null; wait "$_killer" 2>/dev/null
+                printf '\r  [*] %s ... done\n' "$fn"
+            else
+                printf '\r  [!] %s ... SKIPPED (no target?)\n' "$fn"
+            fi
+        done
+    }
 
-    phase_banner "RECONNAISSANCE" "TA0043"
-    recon_scan
+    _run_all_phase "RECONNAISSANCE" "TA0043" recon_scan
+    _run_all_phase "INITIAL ACCESS" "TA0001" exploit_sqli exploit_command_injection exploit_webshell_deploy exploit_xss_poc exploit_apache_41773 exploit_shellshock_6271 exploit_webmin_15107 exploit_ghostcat_1938 exploit_log4shell_pattern exploit_spring4shell_pattern exploit_struts_upload_pattern
+    _run_all_phase "CREDENTIAL ACCESS" "TA0006" bruteforce_ssh bruteforce_ftp bruteforce_http
+    _run_all_phase "PRIVILEGE ESCALATION" "TA0004" exploit_polkit_4034
+    _run_all_phase "COLLECTION" "TA0009" crawl_all
+    _run_all_phase "LATERAL MOVEMENT + PERSISTENCE" "TA0008/TA0003" post_exploit_all
+    _run_all_phase "IMPACT" "TA0040" malware_c2_all
 
-    phase_banner "INITIAL ACCESS" "TA0001"
-    for fn in exploit_sqli exploit_command_injection exploit_webshell_deploy exploit_xss_poc exploit_apache_41773 exploit_shellshock_6271 exploit_webmin_15107 exploit_ghostcat_1938 exploit_log4shell_pattern exploit_spring4shell_pattern exploit_struts_upload_pattern; do
-        timeout 15 "$fn" >/dev/null 2>&1 || true
-    done
-
-    phase_banner "EXECUTION" "TA0002"
-    exploit_webshell_deploy >/dev/null 2>&1 || true
-
-    phase_banner "CREDENTIAL ACCESS" "TA0006"
-    for fn in bruteforce_ssh bruteforce_ftp bruteforce_http; do
-        timeout 15 "$fn" >/dev/null 2>&1 || true
-    done
-
-    phase_banner "PRIVILEGE ESCALATION" "TA0004"
-    timeout 15 exploit_polkit_4034 >/dev/null 2>&1 || true
-
-    phase_banner "COLLECTION" "TA0009"
-    timeout 15 crawl_all >/dev/null 2>&1 || true
-
-    phase_banner "LATERAL MOVEMENT + PERSISTENCE" "TA0008/TA0003"
-    timeout 15 post_exploit_all >/dev/null 2>&1 || true
-
-    phase_banner "IMPACT" "TA0040"
-    timeout 15 malware_c2_all >/dev/null 2>&1 || true
-
-    echo "[DONE] All kill-chain phases complete"
+    printf '\n'
+    echo "[DONE] Full kill-chain complete. 8 phases executed."
 }
 
 _exec_cves() {
     local -a cve_fns=(exploit_ghostcat_1938 exploit_shellshock_6271 exploit_apache_41773 exploit_webmin_15107 exploit_log4shell_pattern exploit_spring4shell_pattern exploit_struts_upload_pattern exploit_polkit_4034)
-    local i=1
+    local i=1 fn
     for fn in "${cve_fns[@]}"; do
-        echo "[CVE ${i}/8]"
-        timeout 15 "$fn" >/dev/null 2>&1 || true
+        printf '  [CVE %d/8] %s ...' "$i" "$fn"
+        ( "$fn" ) &>/dev/null & local _pid=$!
+        ( sleep 30; kill "$_pid" 2>/dev/null ) & local _killer=$!
+        wait "$_pid" 2>/dev/null
+        kill "$_killer" 2>/dev/null; wait "$_killer" 2>/dev/null
+        printf '\r  [CVE %d/8] %s ... done\n' "$i" "$fn"
         i=$((i + 1))
     done
-    echo "[DONE] All CVEs complete"
+    echo "[DONE] All 8 CVEs complete"
 }
