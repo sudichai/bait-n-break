@@ -38,14 +38,12 @@ victim_dashboard() {
         echo "  [..] Downloading CVE dependencies (first run)..."
         bash "${cve_dir}/download.sh"
         # Re-check after download
-        need_dl=""
         for f in \
-            "${cve_dir}/webmin-1.890/webmin_1.890_all.deb" \
-            "${cve_dir}/tomcat-ghostcat/apache-tomcat-9.0.30.tar.gz"; do
-            [ -f "$f" ] || need_dl=1
+            "${cve_dir}/webmin-1.890/webmin_1.890_all.deb"; do
+            [ -f "$f" ] && need_dl="" || true
         done
         if [ -n "$need_dl" ]; then
-            echo "  [WARN] Some CVE deps unavailable — continuing without them"
+            echo "  [WARN] Webmin .deb unavailable -- webmin CVE will be skipped"
         else
             echo "  [OK] CVE dependencies downloaded"
         fi

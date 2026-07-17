@@ -77,6 +77,8 @@ services:
     ports:
       - "${BNB_CVE_WEBMIN_PORT:-10000}:10000"
     restart: unless-stopped
+    mem_limit: 384m
+    mem_reservation: 128m
 
   tomcat-ghostcat:
     profiles: ["cve"]
@@ -87,6 +89,10 @@ services:
       - "${BNB_CVE_TOMCAT_HTTP_PORT:-8083}:8080"
       - "${BNB_CVE_TOMCAT_AJP_PORT:-8009}:8009"
     restart: unless-stopped
+    mem_limit: 512m
+    mem_reservation: 256m
+    environment:
+      JAVA_OPTS: "-Xms128m -Xmx384m"
 
 volumes:
   db-data:
