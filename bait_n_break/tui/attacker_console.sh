@@ -36,16 +36,6 @@ attacker_console() {
         exploit_cred_harvest 2>/dev/null || true; exploit_dns_exfil 2>/dev/null || true
     }
 
-    # --- Run a bash FUNCTION with timeout (subshell+PID kill) ---
-    _run_fn() {
-        local fn="$1" timeout_secs="${2:-30}"
-        ( "$fn" ) & local _pid=$!
-        ( sleep "$timeout_secs"; kill "$_pid" 2>/dev/null ) & local _killer=$!
-        wait "$_pid" 2>/dev/null; local _rc=$?
-        kill "$_killer" 2>/dev/null; wait "$_killer" 2>/dev/null
-        return "$_rc"
-    }
-
     # --- Part B: _build_menu() ---
     _build_menu() {
         local -a menu_args=()
@@ -167,22 +157,32 @@ _exec_one() {
 }
 
 _exec_all() {
+    local phase_fn_count=0 phase_fn_ok=0 phase_fn_fail=0 phase_name=""
+    local total_ok=0 total_fail=0
+
     _run_all_phase() {
         local phase="$1" tactic="$2"; shift 2
         printf '\n'
         phase_banner "$phase" "$tactic"
-        local fn
+        local fn i=0 total=$#
+        phase_fn_count=$total phase_fn_ok=0 phase_fn_fail=0 phase_name="$phase"
         for fn in "$@"; do
-            printf '  [*] %s ...' "$fn"
-            if ( "$fn" ) &>/dev/null & local _pid=$!; then
-                ( sleep 30; kill "$_pid" 2>/dev/null ) & local _killer=$!
-                wait "$_pid" 2>/dev/null
-                kill "$_killer" 2>/dev/null; wait "$_killer" 2>/dev/null
-                printf '\r  [*] %s ... done\n' "$fn"
+            i=$((i+1))
+            printf '\033[1;33m[%d/%d]\033[0m \033[1m%s\033[0m\n' "$i" "$total" "$fn"
+            ( "$fn" 2>&1 ) & local _pid=$!
+            ( sleep 30; kill "$_pid" 2>/dev/null ) & local _killer=$!
+            wait "$_pid" 2>/dev/null; local _rc=$?
+            kill "$_killer" 2>/dev/null; wait "$_killer" 2>/dev/null
+            if [ "$_rc" -eq 0 ]; then
+                printf '  \033[1;32m[OK]\033[0m\n\n'
+                phase_fn_ok=$((phase_fn_ok+1)); total_ok=$((total_ok+1))
             else
-                printf '\r  [!] %s ... SKIPPED (no target?)\n' "$fn"
+                printf '  \033[1;31m[FAIL]\033[0m\n\n'
+                phase_fn_fail=$((phase_fn_fail+1)); total_fail=$((total_fail+1))
             fi
         done
+        printf '  \033[1;37mPhase: %s  |  %d/%d OK  |  %d failed\033[0m\n\n' \
+            "$phase_name" "$phase_fn_ok" "$phase_fn_count" "$phase_fn_fail"
     }
 
     _run_all_phase "RECONNAISSANCE" "TA0043" recon_scan
@@ -193,21 +193,30 @@ _exec_all() {
     _run_all_phase "LATERAL MOVEMENT + PERSISTENCE" "TA0008/TA0003" post_exploit_all
     _run_all_phase "IMPACT" "TA0040" malware_c2_all
 
-    printf '\n'
-    echo "[DONE] Full kill-chain complete. 8 phases executed."
+    printf '\n\033[1;37;42m  KILL-CHAIN COMPLETE  \033[0m\n'
+    printf '  %d OK / %d FAIL / %d total functions executed\n\n' "$total_ok" "$total_fail" $((total_ok + total_fail))
+    results_short_summary 2>/dev/null || true
+    echo ""
 }
 
 _exec_cves() {
     local -a cve_fns=(exploit_ghostcat_1938 exploit_shellshock_6271 exploit_apache_41773 exploit_webmin_15107 exploit_log4shell_pattern exploit_spring4shell_pattern exploit_struts_upload_pattern exploit_polkit_4034)
-    local i=1 fn
+    local i=1 fn ok=0 fail=0
     for fn in "${cve_fns[@]}"; do
-        printf '  [CVE %d/8] %s ...' "$i" "$fn"
-        ( "$fn" ) &>/dev/null & local _pid=$!
+        printf '\n\033[1;33m[CVE %d/8]\033[0m \033[1m%s\033[0m\n' "$i" "$fn"
+        ( "$fn" 2>&1 ) & local _pid=$!
         ( sleep 30; kill "$_pid" 2>/dev/null ) & local _killer=$!
-        wait "$_pid" 2>/dev/null
+        wait "$_pid" 2>/dev/null; local _rc=$?
         kill "$_killer" 2>/dev/null; wait "$_killer" 2>/dev/null
-        printf '\r  [CVE %d/8] %s ... done\n' "$i" "$fn"
-        i=$((i + 1))
+        if [ "$_rc" -eq 0 ]; then
+            printf '  \033[1;32m[OK]\033[0m\n'
+            ok=$((ok+1))
+        else
+            printf '  \033[1;31m[FAIL]\033[0m\n'
+            fail=$((fail+1))
+        fi
+        i=$((i+1))
     done
+    printf '\n  %d OK / %d FAIL / 8 total\n\n' "$ok" "$fail"
     echo "[DONE] All 8 CVEs complete"
 }
