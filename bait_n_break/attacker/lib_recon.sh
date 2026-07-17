@@ -19,7 +19,7 @@ recon_probe_port() {
 recon_scan() {
     target_ensure_set || return 1
 
-    mission_brief "Reconnaissance" "TA0043" "TA0043 — RECONNAISSANCE" "quiet"
+    mission_brief "Reconnaissance" "TA0043" "TA0043 -- RECONNAISSANCE" "quiet"
 
     phase_banner "RECONNAISSANCE" "TA0043"
 

@@ -15,7 +15,7 @@ crawl_leaked_files() {
     local GREEN='\033[1;32m'
     local RESET='\033[0m'
 
-    mission_brief "Bait File Crawler" "T1083" "TA0009 โ€” COLLECTION" "quiet"
+    mission_brief "Bait File Crawler" "T1083" "TA0009 -- COLLECTION" "quiet"
     phase_banner "COLLECTION" "TA0009"
     fake_shell "gobuster dir -u http://\${TARGET_IP}:\${TARGET_PORT} -w /usr/share/wordlists/dirb/common.txt 2>/dev/null || true"
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# bait-n-break payload variant library — sourced, not executed
+# bait-n-break payload variant library -- sourced, not executed
 
 payloads_sqli_auth_bypass=(
   "' OR '1'='1'--"

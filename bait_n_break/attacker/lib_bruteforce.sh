@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Brute-force attacks (SSH, FTP, HTTP) โ€” hydra-accelerated with credential loops.
+# Brute-force attacks (SSH, FTP, HTTP) -- hydra-accelerated with credential loops.
 # Uses engine primitives: mission_brief, phase_banner, fake_shell, bar, http_result, ops, debrief_card.
 # Callbacks: payloads_bruteforce_creds, traffic_form_post, target_ensure_set, results_record.
 # Sourced, not executed.
@@ -12,7 +12,7 @@ _bruteforce_sleep() {
 bruteforce_ssh() {
     target_ensure_set || { echo "[bruteforce-ssh] No target set."; return 1; }
     _engine_reset_tracker
-    mission_brief "SSH Brute Force" "T1110" "TA0006 โ€” CREDENTIAL ACCESS" "loud"
+    mission_brief "SSH Brute Force" "T1110" "TA0006 -- CREDENTIAL ACCESS" "loud"
     phase_banner "CREDENTIAL ACCESS" "TA0006"
 
     local found="" cred user pass attempt=0 total="${#payloads_bruteforce_creds[@]}"
@@ -91,7 +91,7 @@ bruteforce_ssh() {
 bruteforce_ftp() {
     target_ensure_set || { echo "[bruteforce-ftp] No target set."; return 1; }
     _engine_reset_tracker
-    mission_brief "FTP Brute Force" "T1110" "TA0006 โ€” CREDENTIAL ACCESS" "loud"
+    mission_brief "FTP Brute Force" "T1110" "TA0006 -- CREDENTIAL ACCESS" "loud"
     phase_banner "CREDENTIAL ACCESS" "TA0006"
 
     local found="" cred user pass attempt=0 total="${#payloads_bruteforce_creds[@]}"
@@ -164,7 +164,7 @@ bruteforce_ftp() {
 bruteforce_http() {
     target_ensure_set || { echo "[bruteforce-http] No target set."; return 1; }
     _engine_reset_tracker
-    mission_brief "HTTP Login Brute Force" "T1110" "TA0006 โ€” CREDENTIAL ACCESS" "loud"
+    mission_brief "HTTP Login Brute Force" "T1110" "TA0006 -- CREDENTIAL ACCESS" "loud"
     phase_banner "CREDENTIAL ACCESS" "TA0006"
 
     local found="" cred user pass code response attempt=0 total="${#payloads_bruteforce_creds[@]}"

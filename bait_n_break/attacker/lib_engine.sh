@@ -166,14 +166,14 @@ mission_brief() {
     local target_display="${TARGET_IP:-not set}:${TARGET_PORT:-8080}"
 
     printf '\n'
-    printf "${DIM}โ•”โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•—${RESET}\n"
-    printf "${DIM}โ•‘${RESET} ${WHITE_BOLD}%-44s${RESET} ${DIM}โ•‘${RESET}\n" "$title"
-    printf "${DIM}โ• โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•ฃ${RESET}\n"
-    printf "${DIM}โ•‘${RESET}  Technique : %-30s ${DIM}โ•‘${RESET}\n" "$technique"
-    printf "${DIM}โ•‘${RESET}  Tactic    : %-30s ${DIM}โ•‘${RESET}\n" "$tactic"
-    printf "${DIM}โ•‘${RESET}  Target    : %-30s ${DIM}โ•‘${RESET}\n" "$target_display"
-    printf "${DIM}โ•‘${RESET}  OPSEC Risk: %-30s ${DIM}โ•‘${RESET}\n" "$ops_risk"
-    printf "${DIM}โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•${RESET}\n"
+    printf '+------------------------------------------------+\n'
+    printf '| %-46s |\n' "$title"
+    printf '+------------------------------------------------+\n'
+    printf '|  Technique : %-33s |\n' "$technique"
+    printf '|  Tactic    : %-33s |\n' "$tactic"
+    printf '|  Target    : %-33s |\n' "$target_display"
+    printf '|  OPSEC Risk: %-33s |\n' "$ops_risk"
+    printf '+------------------------------------------------+\n'
     printf '\n'
 }
 
@@ -196,7 +196,7 @@ debrief_card() {
 
     printf '\n'
     printf '================================================\n'
-    printf '  %s — COMPLETE\n' "${1}"
+    printf '  %s -- COMPLETE\n' "${1}"
     printf '================================================\n'
     printf '  Status:     %b%s%b\n' "$status_color" "$status" "$RESET"
     [ -n "$technique" ] && printf '  Technique:  %s\n' "$technique"

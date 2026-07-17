@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# HTTP traffic factory — realistic tool-fingerprinted HTTP requests.
+# HTTP traffic factory -- realistic tool-fingerprinted HTTP requests.
 # Depends on: lib_engine.sh (tool_sig)
 # Sourced, not executed.
 
@@ -78,6 +78,6 @@ traffic_nmap_scan() {
     if command -v nmap >/dev/null 2>&1; then
         nmap -sV -sC --min-rate 200 --max-rate 500 -T4 -p "$ports" "$host"
     else
-        printf '[!] nmap not installed — run setup.sh to install\n'
+        printf '[!] nmap not installed -- run setup.sh to install\n'
     fi
 }
