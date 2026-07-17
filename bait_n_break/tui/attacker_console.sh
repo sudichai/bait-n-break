@@ -60,10 +60,19 @@ attacker_console() {
             "17|Malware / C2 Simulation"
         )
 
-        local tag label
+        local tag label mod
         for item in "${vectors[@]}"; do
             tag="${item%%|*}"; label="${item##*|}"
-            status="$(results_status_for "$tag" 2>/dev/null || true)"
+            case "$tag" in
+                1) mod="recon" ;;  2) mod="bruteforce_ssh" ;;  3) mod="exploit_sqli" ;;
+                4) mod="exploit_command_injection" ;;  5) mod="exploit_webshell_deploy" ;;  6) mod="exploit_xss_reflected" ;;
+                7) mod="exploit_apache_41773" ;;  8) mod="exploit_shellshock_6271" ;;  9) mod="exploit_webmin_15107" ;;
+                10) mod="exploit_ghostcat_1938" ;;  11) mod="exploit_log4shell_pattern" ;;  12) mod="exploit_spring4shell_pattern" ;;
+                13) mod="exploit_struts_upload_pattern" ;;  14) mod="exploit_polkit_4034" ;;
+                15) mod="crawler" ;;  16) mod="post_exploit" ;;  17) mod="malware_c2" ;;
+                *) mod="" ;;
+            esac
+            status="$(results_status_for "$mod" 2>/dev/null || true)"
             case "$status" in
                 VULNERABLE|SUCCESS) prefix="[+] " ;;
                 FAILED) prefix="[-] " ;;
@@ -143,18 +152,6 @@ attacker_console() {
 }
 
 # --- Part F: Execution dispatchers ---
-
-_exec_one() {
-    case "$1" in
-        1)  recon_scan ;;
-        2)  bruteforce_ssh 2>/dev/null || true; bruteforce_ftp 2>/dev/null || true; bruteforce_http 2>/dev/null || true ;;
-        3)  exploit_sqli ;;  4) exploit_command_injection ;;  5) exploit_webshell_deploy ;;  6) exploit_xss_poc ;;
-        7)  exploit_apache_41773 ;;  8) exploit_shellshock_6271 ;;  9) exploit_webmin_15107 ;;
-        10) exploit_ghostcat_1938 ;;  11) exploit_log4shell_pattern ;;  12) exploit_spring4shell_pattern ;;
-        13) exploit_struts_upload_pattern ;;  14) exploit_polkit_4034 ;;
-        15) crawl_all ;;  16) post_exploit_all ;;  17) malware_c2_all ;;
-    esac
-}
 
 _exec_all() {
     local phase_fn_count=0 phase_fn_ok=0 phase_fn_fail=0 phase_name=""

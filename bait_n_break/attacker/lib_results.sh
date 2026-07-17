@@ -101,7 +101,9 @@ results_short_summary() {
 
     local modules=(
         "recon:Reconnaissance"
-        "bruteforce_ssh:Brute Force"
+        "bruteforce_ssh:Brute Force (SSH)"
+        "bruteforce_ftp:Brute Force (FTP)"
+        "bruteforce_http:Brute Force (HTTP)"
         "exploit_sqli:SQL Injection"
         "exploit_command_injection:Command Injection"
         "exploit_webshell_deploy:Webshell Deploy"

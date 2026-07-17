@@ -165,7 +165,15 @@ def get_file(area, filename):
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    sid = request.args.get("sid")
     if request.method == "GET":
+        if sid:
+            return """<form method="post">
+  <input type="hidden" name="sid" value="{}">
+  <input name="username" placeholder="username">
+  <input name="password" placeholder="password" type="password">
+  <button type="submit">Login</button>
+</form>""".format(sid)
         return """
         <form method="post">
           <input name="username" placeholder="username">
@@ -663,25 +671,6 @@ def open_redirect():
     url = request.args.get("url", "/")
     return f"""<html><head><meta http-equiv="refresh" content="0;url={url}"></head>
 <body>Redirecting to {url}...<br><a href="{url}">Click here</a></body></html>"""
-
-
-# --- Session Fixation ---
-
-@app.route("/login")
-def login_fixation():
-    sid = request.args.get("sid")
-    if sid:
-        return """<form method="post">
-  <input type="hidden" name="sid" value="{}">
-  <input name="username" placeholder="username">
-  <input name="password" placeholder="password" type="password">
-  <button type="submit">Login</button>
-</form>""".format(sid)
-    return """<form method="post">
-  <input name="username" placeholder="username">
-  <input name="password" placeholder="password" type="password">
-  <button type="submit">Login</button>
-</form>"""
 
 
 # --- CORS Misconfiguration ---

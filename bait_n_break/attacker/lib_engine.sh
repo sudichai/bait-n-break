@@ -68,17 +68,17 @@ http_result() {
     case "$http_code" in
         2*)
             BNB_ENGINE_PASSED=$((BNB_ENGINE_PASSED + 1))
-            printf '\r  ${GREEN}%s${RESET}  %s  ->  HTTP %s\n' "[+]" "$payload_desc" "$http_code"
+            printf '\r  %b%s%b  %s  ->  HTTP %s\n' "$GREEN" "[+]" "$RESET" "$payload_desc" "$http_code"
             ;;
         403|406)
             BNB_ENGINE_BLOCKED=$((BNB_ENGINE_BLOCKED + 1))
-            printf '\r  ${RED}%s${RESET}  %s  ->  HTTP %s (blocked)\n' "[!]" "$payload_desc" "$http_code"
+            printf '\r  %b%s%b  %s  ->  HTTP %s (blocked)\n' "$RED" "[!]" "$RESET" "$payload_desc" "$http_code"
             ;;
         5*)
-            printf '\r  ${YELLOW}%s${RESET}  %s  ->  HTTP %s\n' "[?]" "$payload_desc" "$http_code"
+            printf '\r  %b%s%b  %s  ->  HTTP %s\n' "$YELLOW" "[?]" "$RESET" "$payload_desc" "$http_code"
             ;;
         *)
-            printf '\r  ${DIM}%s${RESET}  %s  ->  HTTP %s\n' "[.]" "$payload_desc" "$http_code"
+            printf '\r  %b%s%b  %s  ->  HTTP %s\n' "$DIM" "[.]" "$RESET" "$payload_desc" "$http_code"
             ;;
     esac
 }
