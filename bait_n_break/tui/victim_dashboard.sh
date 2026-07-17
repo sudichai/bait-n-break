@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Victim (Target) role dashboard — persistent ANSI TUI with live-updating
+# Victim (Target) role dashboard -- persistent ANSI TUI with live-updating
 # service status, vulnerability counts, and incident log.
 # Auto-deploys on entry; falls back to whiptail if terminal is too small.
 # Sourced, not executed.
@@ -21,7 +21,7 @@ victim_dashboard() {
     clear
     echo ""
     echo "=============================================="
-    echo "  bait-n-break Victim Node — Auto-Deploy"
+    echo "  bait-n-break Victim Node -- Auto-Deploy"
     echo "=============================================="
     echo ""
 

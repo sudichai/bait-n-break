@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Attacker console โ€” whiptail menu with live terminal execution, status icons,
+# Attacker console -- whiptail menu with live terminal execution, status icons,
 # TOTAL stats, and results summary. Sourced, not executed.
 
 attacker_console() {
@@ -55,7 +55,7 @@ attacker_console() {
             "12|Spring4Shell Pattern (Binding)"
             "13|Struts2 Pattern (Upload -> RCE)"
             "14|CVE-2021-4034 Polkit LPE (pkexec)"
-            "15|Crawler โ€” Bait File Exfiltration"
+            "15|Crawler -- Bait File Exfiltration"
             "16|Post-Exploitation (10 techniques)"
             "17|Malware / C2 Simulation"
         )
@@ -120,7 +120,7 @@ attacker_console() {
             12) _do "Spring4Shell Pattern (Binding)" exploit_spring4shell_pattern ;;
             13) _do "Struts2 Pattern (Upload -> RCE)" exploit_struts_upload_pattern ;;
             14) _do "CVE-2021-4034 Polkit LPE (pkexec)" exploit_polkit_4034 ;;
-            15) _do "Crawler โ€” Bait File Exfiltration" crawl_all ;;
+            15) _do "Crawler -- Bait File Exfiltration" crawl_all ;;
             16) _do "Post-Exploitation (10 techniques)" post_exploit_all ;;
             17) _do "Malware / C2 Simulation" malware_c2_all ;;
             A|a) _all ;;
