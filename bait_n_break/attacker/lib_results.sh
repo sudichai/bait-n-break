@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Enhanced results tracker with MITRE ATT&CK tags and WAF stat support.
-# Pipe-delimited format: timestamp|module|status|ops_level|tactic|waf_stats|detail
+# Enhanced results tracker with MITRE ATT&CK tags and TOTAL stat support.
+# Pipe-delimited format: timestamp|module|status|ops_level|tactic|payload_stats|detail
 # Sourced, not executed - deliberately does not set shell options (see
 # shared/config.sh for why).
 
@@ -21,11 +21,11 @@ results_init() {
 }
 
 results_record() {
-    local module="$1" status="$2" ops_level="$3" tactic="$4" waf_stats="$5" detail="$6"
+    local module="$1" status="$2" ops_level="$3" tactic="$4" payload_stats="$5" detail="$6"
     local ts
     ts="$(date '+%Y-%m-%d %H:%M:%S')"
     results_init
-    printf '%s|%s|%s|%s|%s|%s|%s\n' "$ts" "$module" "$status" "$ops_level" "$tactic" "$waf_stats" "$detail" >> "${BNB_ATTACK_RESULTS}"
+    printf '%s|%s|%s|%s|%s|%s|%s\n' "$ts" "$module" "$status" "$ops_level" "$tactic" "$payload_stats" "$detail" >> "${BNB_ATTACK_RESULTS}"
 }
 
 results_record_simple() {
@@ -56,23 +56,15 @@ results_count() {
     printf '%s\n' "$count"
 }
 
-results_waf_stats() {
+results_stats() {
     if [ ! -f "${BNB_ATTACK_RESULTS}" ]; then
-        printf '0 blocked, 0 bypassed\n'
+        echo "no results"
         return
     fi
-    local blocked=0 bypassed=0
-    while IFS='|' read -r _ _ _ _ _ waf_field _; do
-        if [ -z "$waf_field" ] || [ "$waf_field" = "sep=" ]; then
-            continue
-        fi
-        local b p
-        b="$(echo "$waf_field" | sed -n 's/^\([0-9]*\)B.*/\1/p')"
-        p="$(echo "$waf_field" | sed -n 's/.*\/\([0-9]*\)P$/\1/p')"
-        [ -n "$b" ] && blocked=$((blocked + b)) || true
-        [ -n "$p" ] && bypassed=$((bypassed + p)) || true
-    done < "${BNB_ATTACK_RESULTS}"
-    printf '%d blocked, %d bypassed\n' "$blocked" "$bypassed"
+    local total=0 vuln=0
+    total="$(grep -v '^sep=|' "${BNB_ATTACK_RESULTS}" 2>/dev/null | wc -l)"
+    vuln="$(grep -v '^sep=|' "${BNB_ATTACK_RESULTS}" 2>/dev/null | awk -F'|' '$3 ~ /VULNERABLE|SUCCESS/ {c++} END {print c+0}')"
+    printf '%d/%d exploited' "$vuln" "$total"
 }
 
 results_status_for() {
@@ -138,10 +130,10 @@ results_short_summary() {
         status="$(grep -v '^sep=|' "${BNB_ATTACK_RESULTS}" | awk -F'|' -v m="$mod" '$2 == m {s=$3} END {print s}')"
 
         local waf_str=""
-        local waf
-        waf="$(grep -v '^sep=|' "${BNB_ATTACK_RESULTS}" | awk -F'|' -v m="$mod" '$2 == m {s=$6} END {print s}')"
-        if [ -n "$waf" ]; then
-            waf_str="  WAF: $waf"
+        local TOTAL
+        TOTAL="$(grep -v '^sep=|' "${BNB_ATTACK_RESULTS}" | awk -F'|' -v m="$mod" '$2 == m {s=$6} END {print s}')"
+        if [ -n "$TOTAL" ]; then
+            waf_str="  TOTAL: $TOTAL"
         fi
 
         local color="$RESET"
@@ -182,8 +174,8 @@ results_short_summary() {
     printf '%b%d Other%b' "$YELLOW" "$total_other" "$RESET"
     printf '\n'
     local waf_summary
-    waf_summary="$(results_waf_stats)"
-    printf '  WAF: %s\n' "$waf_summary"
+    waf_summary="$(results_stats)"
+    printf '  TOTAL: %s\n' "$waf_summary"
     printf '==============================================\n'
     printf '\n'
 }

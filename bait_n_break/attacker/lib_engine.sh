@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Core rendering engine - typewriter, fake_shell, waf_tracker, progress bar, tool signatures, mission briefing
+# Core rendering engine - typewriter, fake_shell, http_result, progress bar, tool signatures, mission briefing
 
-BNB_ENGINE_WAF_BLOCKED=0
-BNB_ENGINE_WAF_BYPASSED=0
+BNB_ENGINE_BLOCKED=0
+BNB_ENGINE_PASSED=0
 BNB_ENGINE_PAYLOAD_TOTAL=0
 
-_engine_reset_waf() {
-    BNB_ENGINE_WAF_BLOCKED=0
-    BNB_ENGINE_WAF_BYPASSED=0
+_engine_reset_tracker() {
+    BNB_ENGINE_BLOCKED=0
+    BNB_ENGINE_PASSED=0
     BNB_ENGINE_PAYLOAD_TOTAL=0
 }
 
@@ -29,7 +29,7 @@ fake_shell() {
     local BOLD='\033[1m'
     local RESET='\033[0m'
     printf "${GREEN}root@kali:~#${RESET} ${BOLD}%s${RESET}\n" "$cmd"
-    eval "$cmd"
+    eval "$cmd" 2>/dev/null || true
 }
 
 phase_banner() {
@@ -54,7 +54,7 @@ phase_banner() {
     printf '\n\n'
 }
 
-waf_tracker() {
+http_result() {
     local http_code="$1"
     local payload_desc="$2"
     local GREEN='\033[1;32m'
@@ -67,18 +67,18 @@ waf_tracker() {
 
     case "$http_code" in
         2*)
-            BNB_ENGINE_WAF_BYPASSED=$((BNB_ENGINE_WAF_BYPASSED + 1))
-            printf "${GREEN}[BYPASSED]${RESET}  %s  →  %s\n" "$payload_desc" "HTTP ${http_code}"
+            BNB_ENGINE_PASSED=$((BNB_ENGINE_PASSED + 1))
+            printf '\r  ${GREEN}%s${RESET}  %s  โ’  HTTP %s\n' "[+]" "$payload_desc" "$http_code"
             ;;
         403|406)
-            BNB_ENGINE_WAF_BLOCKED=$((BNB_ENGINE_WAF_BLOCKED + 1))
-            printf "${RED}[BLOCKED ]${RESET}  %s  →  %s\n" "$payload_desc" "HTTP ${http_code}"
+            BNB_ENGINE_BLOCKED=$((BNB_ENGINE_BLOCKED + 1))
+            printf '\r  ${RED}%s${RESET}  %s  โ’  HTTP %s (blocked)\n' "[!]" "$payload_desc" "$http_code"
             ;;
         5*)
-            printf "${YELLOW}[ERROR   ]${RESET}  %s  →  %s\n" "$payload_desc" "HTTP ${http_code}"
+            printf '\r  ${YELLOW}%s${RESET}  %s  โ’  HTTP %s\n' "[?]" "$payload_desc" "$http_code"
             ;;
         *)
-            printf "${DIM}[CODE    ]${RESET}  %s  →  %s\n" "$payload_desc" "HTTP ${http_code}"
+            printf '\r  ${DIM}%s${RESET}  %s  โ’  HTTP %s\n' "[.]" "$payload_desc" "$http_code"
             ;;
     esac
 }
@@ -102,7 +102,7 @@ bar() {
         empty_str="${empty_str}-"
     done
 
-    printf '\r[%s%s] %d%%' "$fill_str" "$empty_str" "$pct"
+    printf '\r  [%s%s] %d%%\n' "$fill_str" "$empty_str" "$pct"
 }
 
 tool_sig() {
@@ -166,14 +166,14 @@ mission_brief() {
     local target_display="${TARGET_IP:-not set}:${TARGET_PORT:-8080}"
 
     printf '\n'
-    printf "${DIM}╔══════════════════════════════════════════════╗${RESET}\n"
-    printf "${DIM}║${RESET} ${WHITE_BOLD}%-44s${RESET} ${DIM}║${RESET}\n" "$title"
-    printf "${DIM}╠══════════════════════════════════════════════╣${RESET}\n"
-    printf "${DIM}║${RESET}  Technique : %-30s ${DIM}║${RESET}\n" "$technique"
-    printf "${DIM}║${RESET}  Tactic    : %-30s ${DIM}║${RESET}\n" "$tactic"
-    printf "${DIM}║${RESET}  Target    : %-30s ${DIM}║${RESET}\n" "$target_display"
-    printf "${DIM}║${RESET}  OPSEC Risk: %-30s ${DIM}║${RESET}\n" "$ops_risk"
-    printf "${DIM}╚══════════════════════════════════════════════╝${RESET}\n"
+    printf "${DIM}โ•”โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•—${RESET}\n"
+    printf "${DIM}โ•‘${RESET} ${WHITE_BOLD}%-44s${RESET} ${DIM}โ•‘${RESET}\n" "$title"
+    printf "${DIM}โ• โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•ฃ${RESET}\n"
+    printf "${DIM}โ•‘${RESET}  Technique : %-30s ${DIM}โ•‘${RESET}\n" "$technique"
+    printf "${DIM}โ•‘${RESET}  Tactic    : %-30s ${DIM}โ•‘${RESET}\n" "$tactic"
+    printf "${DIM}โ•‘${RESET}  Target    : %-30s ${DIM}โ•‘${RESET}\n" "$target_display"
+    printf "${DIM}โ•‘${RESET}  OPSEC Risk: %-30s ${DIM}โ•‘${RESET}\n" "$ops_risk"
+    printf "${DIM}โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•${RESET}\n"
     printf '\n'
 }
 
@@ -185,34 +185,25 @@ debrief_card() {
     local GREEN='\033[1;32m'
     local RED='\033[1;31m'
     local YELLOW='\033[1;33m'
-    local WHITE_BOLD='\033[1;37m'
     local RESET='\033[0m'
     local status_color
-    local waf_summary
 
     case "$status" in
-        SUCCESS|VULNERABLE)
-            status_color="$GREEN"
-            ;;
-        FAILED|BLOCKED)
-            status_color="$RED"
-            ;;
-        *)
-            status_color="$YELLOW"
-            ;;
+        SUCCESS|VULNERABLE) status_color="$GREEN" ;;
+        FAILED)              status_color="$RED" ;;
+        *)                   status_color="$YELLOW" ;;
     esac
 
-    waf_summary="blocked:${BNB_ENGINE_WAF_BLOCKED}  bypassed:${BNB_ENGINE_WAF_BYPASSED}  total:${BNB_ENGINE_PAYLOAD_TOTAL}"
-
     printf '\n'
-    printf "${DIM}╔══════════════════════════════════════════════╗${RESET}\n"
-    printf "${DIM}║${RESET}  ${status_color}Status : %-32s${RESET} ${DIM}║${RESET}\n" "$status"
-    printf "${DIM}╠══════════════════════════════════════════════╣${RESET}\n"
-    printf "${DIM}║${RESET}  Technique : %-30s ${DIM}║${RESET}\n" "$technique"
-    printf "${DIM}║${RESET}  OPSEC Risk: %-30s ${DIM}║${RESET}\n" "$ops_risk"
-    printf "${DIM}║${RESET}  WAF Stats : %-30s ${DIM}║${RESET}\n" "$waf_summary"
-    printf "${DIM}╚══════════════════════════════════════════════╝${RESET}\n"
+    printf '================================================\n'
+    printf '  %s — COMPLETE\n' "${1}"
+    printf '================================================\n'
+    printf '  Status:     %b%s%b\n' "$status_color" "$status" "$RESET"
+    [ -n "$technique" ] && printf '  Technique:  %s\n' "$technique"
+    [ -n "$ops_risk" ] && printf '  OPSEC:      %s\n' "$ops_risk"
+    printf '  Payloads:   %d tested\n' "${BNB_ENGINE_PAYLOAD_TOTAL}"
+    printf '================================================\n'
     printf '\n'
 
-    _engine_reset_waf
+    _engine_reset_tracker
 }
